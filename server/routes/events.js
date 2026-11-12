@@ -541,15 +541,21 @@ router.post('/', requireAuth, async (request, response) => {
 })
 
 // Loads an event for an organizer-only route inside a transaction: 404 when it is missing
-// (or a draft), 403 when the signed-in user is not its organizer. Returns { row } or { status, error }.
-async function findOwnedEvent(connection, rawId, user) {
+// (or a draft), 403 when the signed-in user is not its organizer. Admins can manage events,
+// except for check-in, which is restricted to the event organizer.
+async function findOwnedEvent(
+  connection,
+  rawId,
+  user,
+  { allowAdmin = true, unauthorizedMessage = 'Only the event organizer can change this event' } = {},
+) {
   const eventId = parseEventId(rawId)
   if (eventId === null) return { status: 404, ...EVENT_NOT_FOUND }
 
   const row = await lockEventRow(connection, eventId)
   if (!row) return { status: 404, ...EVENT_NOT_FOUND }
-  if (row.organizer_id !== user.id && user.role !== 'admin') {
-    return { status: 403, error: 'Only the event organizer can change this event' }
+  if (row.organizer_id !== user.id && (!allowAdmin || user.role !== 'admin')) {
+    return { status: 403, error: unauthorizedMessage }
   }
   return { row }
 }
@@ -932,7 +938,10 @@ router.post('/:id/check-in', requireAuth, async (request, response) => {
 
   let result
   const earlyResponse = await withTransaction(async (connection) => {
-    const { row, status, error } = await findOwnedEvent(connection, request.params.id, request.user)
+    const { row, status, error } = await findOwnedEvent(connection, request.params.id, request.user, {
+      allowAdmin: false,
+      unauthorizedMessage: 'Only the event organizer can check in tickets',
+    })
     if (error) return { status, body: { error } }
     if (row.status === 'cancelled') {
       return { status: 409, body: { error: 'This event has been cancelled' } }

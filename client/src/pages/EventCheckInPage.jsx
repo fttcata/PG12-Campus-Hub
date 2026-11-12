@@ -87,7 +87,7 @@ export default function EventCheckInPage() {
   }
 
   const isOwner = user && String(event.organizerId) === String(user.id)
-  const canScan = Boolean(isOwner || user?.role === 'admin')
+  const canScan = Boolean(isOwner)
   const scannerUnavailable = event.isScraped || event.type === 'fundraiser'
 
   if (!canScan) {
@@ -97,7 +97,7 @@ export default function EventCheckInPage() {
           <p className="eyebrow">Access restricted</p>
           <h1 className="display mt-3 text-3xl">Organizer check-in only</h1>
           <p className="mt-3 text-sm text-muted">
-            Only the organizer of {event.title} or an administrator can check in tickets.
+            Only the organizer of {event.title} can check in tickets.
           </p>
           <Link to={`/events/${event.id}`} className="btn btn-dark mt-5 inline-flex">
             Back to event

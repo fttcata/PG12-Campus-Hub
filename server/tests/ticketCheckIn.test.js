@@ -174,12 +174,11 @@ describe('POST /api/events/:id/check-in', () => {
     assert.equal(unchanged.checked_in_at.getTime(), stored.checked_in_at.getTime())
   })
 
-  test('allows an administrator to check in a ticket', async () => {
+  test('rejects an administrator from checking in a ticket', async () => {
     const ticketCode = await insertTicket(eventId, users.holder2)
     const { status, body } = await checkIn(eventId, users.admin.token, ticketCode)
-    assert.equal(status, 200)
-    assert.equal(body.check_in.ticket_code, ticketCode)
-    assert.equal(body.check_in.already_checked_in, false)
+    assert.equal(status, 403)
+    assert.match(body.error, /organizer/i)
   })
 
   test('rejects check-in for fundraiser events', async () => {
