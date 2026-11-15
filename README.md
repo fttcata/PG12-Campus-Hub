@@ -7,15 +7,38 @@ Modern Tech on WWW group project. (COMP3322)
 - `server/`: Node.js, Express, `mysql2`, standard parameterized SQL
 - `database/`: MySQL 8 initialization and seed data
 
-## Run locally
+## Run with Docker
 
-Requirements: Node.js 20+ and Docker Desktop.
+Requirement: Docker Engine with the Compose plugin. Node.js, MySQL, and Nginx run inside the
+containers; they do not need to be installed on the deployment server.
 
-```powershell
-docker compose up -d
+```sh
+docker compose up -d --build
 ```
 
-Open `http://localhost`. The client container serves the React SPA on port 80 and proxies `/api` to the Express container on port 5000. The API is also available on host port 5001, and MySQL on host port 3307, to avoid common local port conflicts.
+Open `http://localhost` locally, or `http://<school-server-hostname>` when deployed remotely.
+The client container serves the React SPA on port 80 and proxies `/api` and `/socket.io` to the
+private Express container over the Compose network. The backend and MySQL ports are not published
+to the host; MySQL is reachable by the backend at `mysql:3306` only.
+
+For the marking server, use the HTTP URL:
+
+```text
+http://c3322-pgXX.cs.hku.hk
+```
+
+Replace `c3322-pgXX` with the hostname assigned to your server.
+
+Check the deployment from the server with:
+
+```sh
+docker compose ps
+docker compose logs --tail=100 mysql
+docker compose logs --tail=100 server
+curl -i http://localhost/api/health
+```
+
+The MySQL health check ensures the backend starts only after MySQL accepts connections.
 
 For local development without Docker:
 
@@ -30,8 +53,8 @@ The Vite client runs at `http://localhost:5173` and proxies API calls to `http:/
 Useful checks:
 
 ```powershell
-Invoke-RestMethod http://localhost:5001/api/health
-Invoke-RestMethod http://localhost:5001/api/events
+Invoke-RestMethod http://localhost/api/health
+Invoke-RestMethod http://localhost/api/events
 ```
 
 ### Admin access
@@ -45,11 +68,10 @@ cd server
 npm run admin:promote -- your-verified-account@example.com
 ```
 
-For Docker-based development, run the command on the host from the `server` directory after
-dependencies are installed, using host port 3307 for the Compose database:
+For Docker-based development, run the command inside the backend container:
 
 ```sh
-DB_HOST=127.0.0.1 DB_PORT=3307 npm run admin:promote -- your-verified-account@example.com
+docker compose exec server npm run admin:promote -- your-verified-account@example.com
 ```
 
 Log out and sign in again after promotion. Admins can manage published
@@ -71,7 +93,7 @@ On startup the server logs `SMTP ready (sandbox.smtp.mailtrap.io:2525)` when the
 ### Demo data (pre-loaded on first boot)
 
 `database/init.sql` seeds the database the first time the MySQL volume is created, so
-`docker compose up --build` on a fresh machine opens on realistic Hong Kong university events (free,
+`docker compose up -d --build` on a fresh machine opens on realistic Hong Kong university events (free,
 paid, sold out, and fundraisers with live goal progress). Event dates are computed from the moment the
 database boots, so they are always upcoming. To start over from the seed:
 
@@ -110,10 +132,8 @@ confirmation containing all ticket QR codes. After updating an existing MySQL vo
 migration once from the repository root:
 
 ```sh
-DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=student_events DB_USER=app_user DB_PASSWORD=app_password \
-  npm run db:migrate-ticket-attendees --prefix server
-DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=student_events DB_USER=app_user DB_PASSWORD=app_password \
-  npm run db:migrate-ticket-checkin --prefix server
+docker compose exec server npm run db:migrate-ticket-attendees
+docker compose exec server npm run db:migrate-ticket-checkin
 ```
 
 The migrations backfill existing tickets from their purchaser accounts and add the check-in timestamp;

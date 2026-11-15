@@ -12,6 +12,11 @@ export function getChatSocket(token) {
       path: '/socket.io',
       transports: ['websocket', 'polling'],
     })
+    socket.on('connect_error', (error) => {
+      if (/authentication required|invalid or expired token|user no longer exists/i.test(error.message)) {
+        window.dispatchEvent(new Event('campushub:session-expired'))
+      }
+    })
   }
 
   if (currentToken !== token) {

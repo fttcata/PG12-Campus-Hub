@@ -12,7 +12,7 @@ import {
 } from '../api/events.js'
 import { formatDateTime, formatMoney, getEventKind, KIND_LABELS } from '../utils/format.js'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 10
 
 export default function AdminEventsPage() {
   const [result, setResult] = useState({ events: [], page: 1, total: 0 })
@@ -21,6 +21,7 @@ export default function AdminEventsPage() {
   const [error, setError] = useState('')
   const [scraping, setScraping] = useState(false)
   const [users, setUsers] = useState([])
+  const [usersPage, setUsersPage] = useState(1)
   const [usersLoading, setUsersLoading] = useState(true)
 
   const loadEvents = useCallback(async () => {
@@ -135,6 +136,8 @@ export default function AdminEventsPage() {
   }
 
   const pageCount = Math.max(1, Math.ceil(result.total / PAGE_SIZE))
+  const userPageCount = Math.max(1, Math.ceil(users.length / PAGE_SIZE))
+  const visibleUsers = users.slice((usersPage - 1) * PAGE_SIZE, usersPage * PAGE_SIZE)
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -213,6 +216,14 @@ export default function AdminEventsPage() {
         </div>
       )}
 
+      {pageCount > 1 && (
+        <nav className="mt-6 flex items-center justify-between" aria-label="Event pages">
+          <button type="button" className="btn btn-outline py-2" disabled={page <= 1 || loading} onClick={() => { setLoading(true); setPage((current) => current - 1) }}>Previous events</button>
+          <span className="font-mono text-xs text-muted">Events page {page} of {pageCount}</span>
+          <button type="button" className="btn btn-outline py-2" disabled={page >= pageCount || loading} onClick={() => { setLoading(true); setPage((current) => current + 1) }}>Next events</button>
+        </nav>
+      )}
+
       <section className="mt-12">
         <h2 className="display text-3xl">Manage accounts</h2>
         <p className="mt-2 text-sm text-muted">Accounts with owned events or tickets purchased for other attendees must be handled first.</p>
@@ -220,7 +231,7 @@ export default function AdminEventsPage() {
           <p className="mt-4 text-sm text-muted">Loading accounts…</p>
         ) : (
           <div className="mt-4 space-y-3">
-            {users.map((account) => (
+            {visibleUsers.map((account) => (
               <article key={account.id} className="panel flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">{account.name}</p>
@@ -239,39 +250,14 @@ export default function AdminEventsPage() {
             ))}
           </div>
         )}
+        {!usersLoading && userPageCount > 1 && (
+          <nav className="mt-6 flex items-center justify-between" aria-label="Account pages">
+            <button type="button" className="btn btn-outline py-2" disabled={usersPage <= 1} onClick={() => setUsersPage((current) => current - 1)}>Previous accounts</button>
+            <span className="font-mono text-xs text-muted">Accounts page {usersPage} of {userPageCount}</span>
+            <button type="button" className="btn btn-outline py-2" disabled={usersPage >= userPageCount} onClick={() => setUsersPage((current) => current + 1)}>Next accounts</button>
+          </nav>
+        )}
       </section>
-
-      {pageCount > 1 && (
-        <nav className="mt-6 flex items-center justify-between" aria-label="Event pages">
-          <button
-            type="button"
-            className="btn btn-outline py-2"
-            disabled={page <= 1 || loading}
-            onClick={() => {
-              setLoading(true)
-              setError('')
-              setPage((current) => current - 1)
-            }}
-          >
-            Previous
-          </button>
-          <span className="font-mono text-xs text-muted">
-            Page {page} of {pageCount}
-          </span>
-          <button
-            type="button"
-            className="btn btn-outline py-2"
-            disabled={page >= pageCount || loading}
-            onClick={() => {
-              setLoading(true)
-              setError('')
-              setPage((current) => current + 1)
-            }}
-          >
-            Next
-          </button>
-        </nav>
-      )}
     </main>
   )
 }

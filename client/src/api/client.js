@@ -18,7 +18,11 @@ export function setAuthToken(token) {
 
 export async function apiGet(path) {
   const response = await fetch(`${API_BASE_URL}${path}`, { headers: authHeaders() })
-  if (!response.ok) throw await requestError(response)
+  if (!response.ok) {
+    const error = await requestError(response)
+    if (response.status === 401) window.dispatchEvent(new Event('campushub:session-expired'))
+    throw error
+  }
   return response.json()
 }
 
@@ -42,7 +46,10 @@ async function apiRequest(path, method, body) {
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(data.error || `Request failed with status ${response.status}`)
+    const error = new Error(data.error || `Request failed with status ${response.status}`)
+    error.status = response.status
+    if (response.status === 401) window.dispatchEvent(new Event('campushub:session-expired'))
+    throw error
   }
   return data
 }

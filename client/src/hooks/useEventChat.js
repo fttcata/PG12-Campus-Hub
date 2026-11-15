@@ -70,6 +70,7 @@ export function useEventChat(eventId, { enabled = true } = {}) {
       socket.emit('chat:join', { eventId: numericEventId }, (result) => {
         if (!active) return
         if (!result?.ok) {
+          if (result?.status === 401) window.dispatchEvent(new Event('campushub:session-expired'))
           setConnected(false)
           setCanChat(false)
           setLoading(false)

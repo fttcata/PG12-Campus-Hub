@@ -60,7 +60,14 @@ function EventForm({ existing, persisted = false }) {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const eventStart = new Date(form.date)
+    const startTime = new Date(form.date).getTime()
+    const endTime = new Date(form.endDate).getTime()
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
+      setErrors({ ...nextErrors, ...(!Number.isFinite(startTime) ? { date: 'Enter a valid start date and time.' } : {}), ...(!Number.isFinite(endTime) ? { endDate: 'Enter a valid end date and time.' } : {}) })
+      return
+    }
+
+    const eventStart = new Date(startTime)
     const eventData = {
       ...(existing && { id: existing.id }),
       type: form.type,
@@ -248,7 +255,7 @@ function EventForm({ existing, persisted = false }) {
           {existing ? 'Save changes' : 'Publish event'}
         </button>
         {Object.values(errors).some(Boolean) && (
-          <p className="text-center text-xs text-accent">{errors.form || 'Please fix the highlighted fields.'}</p>
+          <p role="alert" className="text-center text-xs text-red-700">{errors.form || 'Please fix the highlighted fields.'}</p>
         )}
       </aside>
     </form>
