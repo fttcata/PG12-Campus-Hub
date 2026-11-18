@@ -72,6 +72,8 @@ erDiagram
         int user_id FK
         int purchased_by FK
         int event_id FK
+        varchar attendee_name
+        varchar attendee_email
         enum type "free|paid"
         enum status "confirmed|cancelled"
         varchar ticket_code UK "UUID"
@@ -99,8 +101,8 @@ erDiagram
 
     reviews {
         int id PK
-        int event_id FK
-        int user_id FK
+        int event_id FK,UK "UNIQUE with user_id"
+        int user_id FK,UK "UNIQUE with event_id"
         tinyint rating "CHECK: 1-5"
         text comment
         timestamp created_at
@@ -128,6 +130,7 @@ erDiagram
 - `FK` — foreign key
 - `UK` — unique constraint
 - `PK,FK` — composite primary key that is also a foreign key
+- `FK,UK` — foreign key that participates in a composite unique constraint
 - `CHECK` — MySQL 8 check constraint (enforced on insert/update)
 - `rsvps` table is intentionally absent — replaced by `tickets` (free/paid ticketing with receipt reference codes)
 
@@ -139,6 +142,9 @@ erDiagram
   user or event — cancel events via `status` instead); every other FK uses `ON DELETE CASCADE`
 - `tickets.user_id` is the attendee/holder; `tickets.purchased_by` is the student who paid, so one buyer
   can book seats for several registered students. `UNIQUE(user_id, event_id)` still applies per holder.
+- `tickets.attendee_name` and `tickets.attendee_email` copy the attendee account's details at booking time
+  and are what the QR ticket and check-in screen display. `reviews` is `UNIQUE(event_id, user_id)` — one
+  review per student per event.
 - `events.available_tickets` is the stored booking counter for standard events; booking decrements it
   and cancellation restores it inside the event-row lock. Fundraisers keep it at `0` (unlimited).
 - All `DATETIME`/`TIMESTAMP` values are UTC (`event_date` is the start instant, not just a day)
