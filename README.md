@@ -13,10 +13,10 @@ Requirement: Docker Engine with the Compose plugin. Node.js, MySQL, and Nginx ru
 containers; they do not need to be installed on the deployment server.
 
 ```sh
-docker compose up -d --build
+docker compose up -d --build    
 ```
 
-Open `http://localhost` locally, or `http://<school-server-hostname>` when deployed remotely.
+Open `http://localhost` locally, or `http://c3322-pg12.cs.hku.hk` when deployed remotely.
 The client container serves the React SPA on port 80 and proxies `/api` and `/socket.io` to the
 private Express container over the Compose network. The backend and MySQL ports are not published
 to the host; MySQL is reachable by the backend at `mysql:3306` only.
@@ -24,10 +24,8 @@ to the host; MySQL is reachable by the backend at `mysql:3306` only.
 For the marking server, use the HTTP URL:
 
 ```text
-http://c3322-pgXX.cs.hku.hk
+http://c3322-pg12.cs.hku.hk
 ```
-
-Replace `c3322-pgXX` with the hostname assigned to your server.
 
 Check the deployment from the server with:
 
@@ -106,10 +104,13 @@ The seed creates 8 organizer accounts, 160 student accounts, ~770 confirmed tick
 messages and bookmarks. Every account uses the password `Demo1234!` (the client only accepts
 HKU/CUHK/PolyU domains):
 
-- `demo.student@connect.hku.hk` — student dashboard with a ticket for every event and a pledge to every fundraiser
-- `hku.careers@connect.hku.hk` — organizer of the HKU Careers Fair (starts ~5 hours after boot, so its chat room is open)
-- `admin@connect.hku.hk` — administrator (admin events page, user management)
-- `pending@connect.hku.hk` — unverified student; verification code `VRF7K3M2Q9P4XN8D`
+For testing purposes, please use:
+'123@connect.hku.hk' -- 12345678 (admin)
+'1234@connect.hku.hk' -- 12345678 
+'12345@connect.hku.hk' -- 12345678
+'123456@connect.hku.hk' -- 12345678
+
+For Ticket testing and scanning, you should take a screenshot of the ticket when bought. Since they are only otherwise sent through mail, thus not accessible to other people except for me. (Cata)
 
 To refresh the demo dates on a database that is already running without wiping it:
 
