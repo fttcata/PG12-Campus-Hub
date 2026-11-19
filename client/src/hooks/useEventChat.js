@@ -24,7 +24,7 @@ function mergeMessages(messages, incoming) {
   return incoming.reduce((current, message) => mergeMessage(current, message), messages)
 }
 
-export function useEventChat(eventId, { enabled = true } = {}) {
+export function useEventChat(eventId, { enabled = true, onEventUpdate } = {}) {
   const { token } = useAuth()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -34,6 +34,34 @@ export function useEventChat(eventId, { enabled = true } = {}) {
   const [sending, setSending] = useState(false)
   const numericEventId = Number(eventId)
   const isValidEventId = Number.isSafeInteger(numericEventId) && numericEventId > 0
+
+  useEffect(() => {
+    if (!isValidEventId) return undefined
+
+    let active = true
+    const socket = getChatSocket(token)
+    if (!socket) return undefined
+
+    function subscribe() {
+      socket.emit('event:subscribe', { eventId: numericEventId })
+    }
+
+    function handleEventUpdate(payload) {
+      if (!active || Number(payload?.event_id) !== numericEventId || !payload.event) return
+      onEventUpdate?.(payload.event)
+    }
+
+    socket.on('event:update', handleEventUpdate)
+    socket.on('connect', subscribe)
+    if (socket.connected) subscribe()
+
+    return () => {
+      active = false
+      socket.emit('event:unsubscribe', { eventId: numericEventId })
+      socket.off('event:update', handleEventUpdate)
+      socket.off('connect', subscribe)
+    }
+  }, [isValidEventId, numericEventId, onEventUpdate, token])
 
   useEffect(() => {
     if (!enabled || !token || !isValidEventId) {

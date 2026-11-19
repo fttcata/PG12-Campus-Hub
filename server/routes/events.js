@@ -5,7 +5,7 @@ import { sendBookingSummary, sendDonationReceipt } from '../config/email.js'
 import { optionalAuth, requireAdmin, requireAuth } from '../middleware/auth.js'
 import { findCategoryById, findCategoryByName } from '../queries/categories.js'
 import { insertEventMessage, isChatMember, listEventMessages } from '../queries/chat.js'
-import { broadcastChatMessage } from '../realtime/chat.js'
+import { broadcastChatMessage, broadcastEventUpdate } from '../realtime/chat.js'
 import { logEmail } from '../queries/emailLog.js'
 import {
   cancelEvent,
@@ -619,6 +619,7 @@ router.put('/:id', requireAuth, rejectExternalEvent, async (request, response) =
   if (earlyResponse) return response.status(earlyResponse.status).json(earlyResponse.body)
 
   const event = await selectEventById(eventId, request.user)
+  if (event) broadcastEventUpdate(eventId, event)
   return response.status(200).json({ event })
 })
 
@@ -650,6 +651,7 @@ router.delete('/:id', requireAuth, async (request, response) => {
     return response.status(200).json({ id: eventId, deleted: true })
   }
   const event = await selectEventById(eventId, request.user)
+  if (event) broadcastEventUpdate(eventId, event)
   return response.status(200).json({ event })
 })
 

@@ -5,7 +5,14 @@ import { useEventChat } from '../hooks/useEventChat.js'
 import { useNow } from '../hooks/useNow.js'
 import { getChatStatus } from '../utils/format.js'
 
-export default function EventChatRoom({ event }) {
+function formatMessageTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString('en-HK', { hour: '2-digit', minute: '2-digit' })
+}
+
+export default function EventChatRoom({ event, onEventUpdate }) {
   const { user } = useAuth()
   const location = useLocation()
   const now = useNow()
@@ -16,6 +23,7 @@ export default function EventChatRoom({ event }) {
   const isOpen = chat.state === 'open'
   const { messages, loading, error, canChat, sending, sendMessage } = useEventChat(event.id, {
     enabled: isOpen && Boolean(user),
+    onEventUpdate,
   })
 
   async function handleSubmit(submitEvent) {
