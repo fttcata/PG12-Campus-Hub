@@ -19,5 +19,11 @@ export default function TicketQrCode({ value }) {
   }, [value])
 
   if (!dataUrl) return null
-  return <img src={dataUrl} alt={`QR code for ticket ${value}`} className="size-36 rounded-sm bg-white p-2" />
+  return (
+    <img
+      src={dataUrl}
+      alt={`QR code for ticket ${value}`}
+      className="size-36 rounded-[2px] border-2 border-ink bg-white p-2 shadow-[3px_3px_0_rgba(21,21,21,.16)]"
+    />
+  )
 }

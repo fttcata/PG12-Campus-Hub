@@ -73,14 +73,20 @@ export default function LoginPage() {
           />
         </Field>
 
-        {submitError && <p className="rounded-sm bg-peach/50 p-3 text-sm">{submitError}</p>}
+        {submitError && (
+          <p className="rounded-[3px] border-2 border-danger bg-[#fbeae7] p-3 text-sm text-danger">{submitError}</p>
+        )}
 
         <button type="submit" className="btn btn-dark w-full" disabled={submitting}>
           {submitting ? 'Logging in…' : 'Log in'}
         </button>
         <p className="text-sm text-muted">
           New here?{' '}
-          <Link to="/register" state={location.state} className="font-semibold text-ink hover:text-accent">
+          <Link
+            to="/register"
+            state={location.state}
+            className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:text-tomato-deep"
+          >
             Create a student account
           </Link>
         </p>

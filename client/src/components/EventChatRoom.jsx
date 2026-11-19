@@ -33,7 +33,7 @@ export default function EventChatRoom({ event }) {
 
   return (
     <section className="panel mt-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink/15 pb-4">
         <h2 className="eyebrow">Event chat</h2>
         <div className="flex items-center gap-2">
           <span className="badge">{chat.label}</span>
@@ -57,18 +57,20 @@ export default function EventChatRoom({ event }) {
           </Link>
         </p>
       )}
-      {isOpen && user && chatExpanded && error && <p className="mt-3 text-sm text-accent">{error}</p>}
+      {isOpen && user && chatExpanded && error && <p className="mt-3 text-sm text-danger">{error}</p>}
       {isOpen && user && chatExpanded && (
         <>
-          <div className="mt-4 space-y-2">
+          <div className="mt-2">
             {messages.length ? messages.map((message) => (
-              <p key={message.id} className="rounded-sm bg-white/60 p-3 text-sm">
-                <strong>{message.user_id === user.id ? 'You' : message.user_name || 'Student'}:</strong>{' '}
-                <span className="whitespace-pre-wrap break-words">{message.content}</span>
-              </p>
+              <div key={message.id} className="border-b border-ink/10 py-3 text-sm">
+                <p className="mb-1 font-mono text-[10px] tracking-[0.08em] text-tomato-deep uppercase">
+                  {message.user_id === user.id ? 'You' : message.user_name || 'Student'}
+                </p>
+                <p className="whitespace-pre-wrap break-words">{message.content}</p>
+              </div>
             )) : null}
             {!loading && messages.length === 0 && !error && (
-              <p className="text-sm text-muted">No messages yet.</p>
+              <p className="py-3 text-sm text-muted">No messages yet.</p>
             )}
           </div>
           {canChat && (
@@ -93,7 +95,7 @@ export default function EventChatRoom({ event }) {
                   {sending ? 'Sending…' : 'Send'}
                 </button>
               </div>
-              <p className="mt-2 text-[10px] text-muted">
+              <p className="mt-2 font-mono text-[10px] tracking-[0.06em] text-muted uppercase">
                 Messages are visible to this event’s ticket holders and donors.
               </p>
             </form>

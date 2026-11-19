@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom'
+import { Link, Route, Routes } from 'react-router-dom'
 import Navbar from './components/Navbar.jsx'
 import FloatingEventChat from './components/FloatingEventChat.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
@@ -93,10 +93,21 @@ export default function App() {
           </Routes>
         </div>
         <FloatingEventChat />
-        <footer className="border-t border-line">
-          <div className="mx-auto flex max-w-6xl flex-col justify-between gap-2 px-4 py-6 font-mono text-xs text-muted sm:flex-row sm:px-6">
-            <span>◒ Campus Hub · COMP3322 group project</span>
-            <span>HKU · CUHK · PolyU</span>
+        <footer className="on-ink bg-ink text-cream">
+          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="font-mono text-[11px] font-medium tracking-[0.14em] text-tomato uppercase">Campus Hub</p>
+                <p className="display mt-3 max-w-lg text-3xl sm:text-5xl">Find something worth showing up for.</p>
+              </div>
+              <Link to="/events" className="btn btn-accent self-start px-5 py-3 md:self-auto">
+                Browse events <span aria-hidden="true">↗</span>
+              </Link>
+            </div>
+            <div className="mt-10 flex flex-col justify-between gap-2 border-t border-cream/15 pt-5 font-mono text-[10px] tracking-[0.12em] text-cream/55 uppercase sm:flex-row">
+              <span>◒ Campus Hub · COMP3322 group project</span>
+              <span>HKU · CUHK · PolyU</span>
+            </div>
           </div>
         </footer>
     </div>

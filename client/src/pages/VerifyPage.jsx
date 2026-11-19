@@ -38,7 +38,7 @@ export default function VerifyPage() {
         <Field label="Verification code" htmlFor="code">
           <input id="code" className="input" value={code} onChange={(event) => setCode(event.target.value)} placeholder="VRF..." required />
         </Field>
-        {error && <p className="rounded-sm bg-peach/50 p-3 text-sm">{error}</p>}
+        {error && <p className="rounded-[3px] border-2 border-danger bg-[#fbeae7] p-3 text-sm text-danger">{error}</p>}
         <button className="btn btn-dark w-full" disabled={submitting}>{submitting ? 'Verifying…' : 'Verify account'}</button>
       </form>
     </AuthLayout>

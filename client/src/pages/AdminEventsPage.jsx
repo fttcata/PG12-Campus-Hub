@@ -141,57 +141,70 @@ export default function AdminEventsPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
         <div>
-          <p className="eyebrow">Admin</p>
-          <h1 className="display mt-4 text-5xl md:text-6xl">Manage events</h1>
-          <p className="mt-3 text-sm text-muted">Manage Campus Hub and CEDARS events.</p>
+          <p className="eyebrow">Admin / control room</p>
+          <h1 className="display mt-4 text-5xl md:text-6xl">
+            Manage events<span className="text-tomato">.</span>
+          </h1>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted">
+            Campus Hub listings, CEDARS imports and student accounts in one place.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="btn btn-accent" disabled={scraping} onClick={handleScrape}>
             {scraping ? 'Refreshing CEDARS…' : 'Refresh CEDARS events'}
           </button>
-          <button type="button" className="btn btn-outline text-accent" onClick={handleDeleteAllUserEvents}>
-            Delete all user-created events
+          <Link to="/events" className="btn btn-outline self-start sm:self-auto">Browse events</Link>
+          <button type="button" className="btn btn-danger" onClick={handleDeleteAllUserEvents}>
+            Delete all user events
           </button>
-          <button type="button" className="btn btn-outline text-accent" onClick={handleDeleteAllCedarsEvents}>
+          <button type="button" className="btn btn-danger" onClick={handleDeleteAllCedarsEvents}>
             Delete all CEDARS events
           </button>
-          <Link to="/events" className="btn btn-outline self-start sm:self-auto">Browse events</Link>
         </div>
       </div>
 
-      <p className="mt-8 font-mono text-xs text-muted">
+      <p className="mt-9 flex flex-wrap items-center gap-2 border-y-2 border-ink/15 py-3 font-mono text-[11px] tracking-[0.06em] text-muted uppercase">
+        <span aria-hidden="true" className="text-tomato">✳</span>
         {loading ? 'Loading events…' : `${result.total} event${result.total === 1 ? '' : 's'} in the system`}
       </p>
-      {error && <p role="alert" className="mt-4 rounded-sm bg-peach/50 p-3 text-sm">{error}</p>}
+      {error && <p role="alert" className="alert-danger mt-4">{error}</p>}
 
       {!loading && result.events.length === 0 ? (
-        <div className="panel mt-4 text-center">
+        <div className="mt-6 rounded-[3px] border-2 border-dashed border-ink/20 bg-card px-6 py-12 text-center">
           <p className="text-muted">There are no events to manage yet.</p>
         </div>
       ) : (
-        <div className="mt-4 space-y-3">
+        <div className="mt-6 space-y-5">
           {result.events.map((event) => {
             const kind = getEventKind(event)
             return (
-              <article key={event.id} className="panel flex flex-col gap-4 sm:flex-row sm:items-center">
+              <article key={event.id} className="paper flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-xs text-muted">{formatDateTime(event.date)}</p>
-                  <h2 className="display mt-1 truncate text-2xl">{event.title}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`badge ${event.isScraped ? 'bg-ink text-cream' : ''}`}>
+                      {event.isScraped ? 'CEDARS · External' : KIND_LABELS[kind]}
+                    </span>
+                    {event.status === 'cancelled' && <span className="badge bg-tomato text-ink">Cancelled</span>}
+                  </div>
+                  <p className="mt-3 font-mono text-[10px] tracking-[0.06em] text-muted uppercase">
+                    {formatDateTime(event.date)}
+                  </p>
+                  <h2 className="display mt-1 text-2xl">{event.title}</h2>
                   <p className="mt-1 text-sm text-muted">
-                    {event.isScraped ? 'CEDARS' : KIND_LABELS[kind]} · {event.organizer} · {event.status}
+                    {event.organizer} ·{' '}
                     {kind === 'fundraiser'
-                      ? ` · ${formatMoney(event.raised)} raised`
-                      : ` · ${event.booked}${event.capacity ? ` / ${event.capacity}` : ''} tickets`}
+                      ? `${formatMoney(event.raised)} raised`
+                      : `${event.booked}${event.capacity ? ` / ${event.capacity}` : ''} tickets`}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 sm:justify-end">
                   <Link to={`/events/${event.id}`} className="btn btn-outline py-2">
                     View
                   </Link>
                   {event.isScraped ? (
-                    <button type="button" className="btn btn-outline py-2 text-accent" onClick={() => handleDelete(event)}>
+                    <button type="button" className="btn btn-danger py-2" onClick={() => handleDelete(event)}>
                       Delete
                     </button>
                   ) : event.status !== 'cancelled' && (
@@ -201,14 +214,13 @@ export default function AdminEventsPage() {
                       </Link>
                       <button
                         type="button"
-                        className="btn btn-outline py-2 text-accent"
+                        className="btn btn-danger py-2"
                         onClick={() => handleCancel(event)}
                       >
                         Cancel
                       </button>
                     </>
                   )}
-
                 </div>
               </article>
             )
@@ -217,43 +229,54 @@ export default function AdminEventsPage() {
       )}
 
       {pageCount > 1 && (
-        <nav className="mt-6 flex items-center justify-between" aria-label="Event pages">
+        <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-5" aria-label="Event pages">
           <button type="button" className="btn btn-outline py-2" disabled={page <= 1 || loading} onClick={() => { setLoading(true); setPage((current) => current - 1) }}>Previous events</button>
-          <span className="font-mono text-xs text-muted">Events page {page} of {pageCount}</span>
+          <span className="font-mono text-[10px] tracking-[0.06em] text-muted uppercase">Events page {page} of {pageCount}</span>
           <button type="button" className="btn btn-outline py-2" disabled={page >= pageCount || loading} onClick={() => { setLoading(true); setPage((current) => current + 1) }}>Next events</button>
         </nav>
       )}
 
-      <section className="mt-12">
-        <h2 className="display text-3xl">Manage accounts</h2>
-        <p className="mt-2 text-sm text-muted">Accounts with owned events or tickets purchased for other attendees must be handled first.</p>
+      <section className="mt-14">
+        <p className="eyebrow">People</p>
+        <h2 className="display mt-3 text-4xl">Manage accounts</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
+          Accounts with owned events or tickets purchased for other attendees must be handled first.
+        </p>
         {usersLoading ? (
-          <p className="mt-4 text-sm text-muted">Loading accounts…</p>
+          <p className="mt-5 font-mono text-[11px] tracking-[0.08em] text-muted uppercase">Loading accounts…</p>
         ) : (
-          <div className="mt-4 space-y-3">
+          <div className="mt-5 space-y-5">
             {visibleUsers.map((account) => (
-              <article key={account.id} className="panel flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{account.name}</p>
-                  <p className="text-sm text-muted">{account.email} · {account.role}</p>
+              <article key={account.id} className="paper flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:p-5">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-cream font-mono text-xs font-semibold">
+                    {account.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold">{account.name}</p>
+                    <p className="mt-0.5 truncate text-sm text-muted">{account.email}</p>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-outline py-2 text-accent"
-                  disabled={account.role === 'admin'}
-                  title={account.role === 'admin' ? 'Administrator accounts cannot be deleted here' : undefined}
-                  onClick={() => handleDeleteUser(account)}
-                >
-                  {account.role === 'admin' ? 'Admin account' : 'Delete account'}
-                </button>
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                  <span className="badge">{account.role}</span>
+                  <button
+                    type="button"
+                    className="btn btn-danger py-2"
+                    disabled={account.role === 'admin'}
+                    title={account.role === 'admin' ? 'Administrator accounts cannot be deleted here' : undefined}
+                    onClick={() => handleDeleteUser(account)}
+                  >
+                    {account.role === 'admin' ? 'Admin account' : 'Delete account'}
+                  </button>
+                </div>
               </article>
             ))}
           </div>
         )}
         {!usersLoading && userPageCount > 1 && (
-          <nav className="mt-6 flex items-center justify-between" aria-label="Account pages">
+          <nav className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-ink/15 pt-5" aria-label="Account pages">
             <button type="button" className="btn btn-outline py-2" disabled={usersPage <= 1} onClick={() => setUsersPage((current) => current - 1)}>Previous accounts</button>
-            <span className="font-mono text-xs text-muted">Accounts page {usersPage} of {userPageCount}</span>
+            <span className="font-mono text-[10px] tracking-[0.06em] text-muted uppercase">Accounts page {usersPage} of {userPageCount}</span>
             <button type="button" className="btn btn-outline py-2" disabled={usersPage >= userPageCount} onClick={() => setUsersPage((current) => current + 1)}>Next accounts</button>
           </nav>
         )}

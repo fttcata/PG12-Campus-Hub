@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useEvents } from '../hooks/useEvents.js'
 import { formatDateTime, formatMoney } from '../utils/format.js'
 import TicketQrCode from '../components/TicketQrCode.jsx'
+import { CheckoutSkeleton } from '../components/LoadingSkeleton.jsx'
 import { googleCalendarUrl } from '../utils/calendar.js'
 
 const STEPS = [
@@ -26,12 +27,18 @@ function validateCardDetails(card) {
 
 function CheckoutProgress({ currentStep }) {
   const activeIndex = STEPS.findIndex(([key]) => key === currentStep)
-  const progress = (activeIndex / (STEPS.length - 1)) * 100
 
   return (
     <nav aria-label="Checkout progress" className="mb-8">
-      <div className="relative mb-4 h-1 rounded-full bg-line">
-        <div className="absolute left-0 top-0 h-1 rounded-full bg-accent transition-all" style={{ width: `${progress}%` }} />
+      <div aria-hidden="true" className="mb-4 flex gap-1.5">
+        {STEPS.map(([key], index) => (
+          <span
+            key={key}
+            className={`h-2 flex-1 rounded-[1px] border-2 border-ink ${
+              index <= activeIndex ? 'bg-tomato' : 'bg-card'
+            }`}
+          />
+        ))}
       </div>
       <ol className="grid grid-cols-3 gap-3">
         {STEPS.map(([key, label], index) => {
@@ -41,14 +48,22 @@ function CheckoutProgress({ currentStep }) {
             <li
               key={key}
               aria-current={active ? 'step' : undefined}
-              className={`text-xs sm:text-sm ${active ? 'font-semibold text-ink' : 'text-muted'}`}
+              className={`flex items-start gap-2 font-mono text-[10px] leading-tight tracking-[0.05em] uppercase sm:items-center sm:text-[11px] ${
+                active ? 'text-ink' : 'text-muted'
+              }`}
             >
-              <span className={`mr-2 inline-grid size-6 place-items-center rounded-full text-xs ${
-                active || complete ? 'bg-ink text-paper' : 'border border-line'
-              }`}>
+              <span
+                className={`grid size-7 shrink-0 place-items-center rounded-[2px] border-2 border-ink text-[10px] shadow-[2px_2px_0_rgba(21,21,21,.12)] ${
+                  complete
+                    ? 'bg-ink text-cream'
+                    : active
+                      ? 'bg-tomato text-ink'
+                      : 'bg-card text-muted'
+                }`}
+              >
                 {complete ? '✓' : index + 1}
               </span>
-              {label}
+              <span className={active ? 'font-semibold' : ''}>{label}</span>
             </li>
           )
         })}
@@ -105,15 +120,18 @@ function CheckoutFlow({ id }) {
   }, [id, loading, listedEvent])
 
   if (isLoadingEvent) {
-    return <main className="mx-auto max-w-3xl px-4 py-16 text-muted sm:px-6">Loading checkout…</main>
+    return <CheckoutSkeleton />
   }
   if (loadError || !event) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-        <p role="alert" className="text-accent">
+        <p role="alert" className="alert-danger">
           {loadError ? `Unable to load this event: ${loadError.message}` : "We couldn't find that event."}
         </p>
-        <Link to={`/events/${id}`} className="mt-4 inline-block text-sm text-muted hover:text-accent">
+        <Link
+          to={`/events/${id}`}
+          className="mt-5 inline-block font-mono text-[11px] tracking-[0.08em] text-muted uppercase underline decoration-ink/20 underline-offset-4 transition-colors hover:text-tomato-deep"
+        >
           ← Back to event
         </Link>
       </main>
@@ -122,10 +140,13 @@ function CheckoutFlow({ id }) {
   if (event.isScraped) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
-        <p className="text-muted">Tickets for CEDARS events must be booked on the original event website.</p>
-        <Link to={`/events/${id}`} className="mt-4 inline-block text-sm text-muted hover:text-accent">
-          ← Back to event
-        </Link>
+        <div className="paper p-5">
+          <p className="eyebrow">External listing</p>
+          <p className="mt-3 text-muted">Tickets for CEDARS events must be booked on the original event website.</p>
+          <Link to={`/events/${id}`} className="btn btn-outline mt-5 inline-flex">
+            Back to event
+          </Link>
+        </div>
       </main>
     )
   }
@@ -184,32 +205,40 @@ function CheckoutFlow({ id }) {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <Link to={`/events/${event.id}`} className="text-sm text-muted hover:text-accent">
+      <Link
+        to={`/events/${event.id}`}
+        className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase underline decoration-ink/20 underline-offset-4 transition-colors hover:text-tomato-deep"
+      >
         ← Back to event
       </Link>
 
-      <header className="mt-5">
+      <header className="mt-7 border-y-2 border-ink/15 py-6">
         <p className="eyebrow">Ticket checkout</p>
-        <h1 className="display mt-2 text-4xl sm:text-5xl">{event.title}</h1>
-        <p className="mt-3 text-sm text-muted">
-          {formatDateTime(event.date)} · {quantity} ticket{quantity === 1 ? '' : 's'} ·{' '}
-          {isPaid ? formatMoney(event.price * quantity) : 'Free'}
+        <h1 className="display mt-3 text-4xl sm:text-5xl">{event.title}</h1>
+        <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] tracking-[0.06em] text-muted uppercase">
+          <span>{formatDateTime(event.date)}</span>
+          <span aria-hidden="true" className="text-tomato">✳</span>
+          <span>{quantity} ticket{quantity === 1 ? '' : 's'}</span>
+          <span aria-hidden="true" className="text-tomato">✳</span>
+          <span>{isPaid ? formatMoney(event.price * quantity) : 'Free'}</span>
         </p>
       </header>
 
-      <section className="panel mt-8">
+      <section className="paper mt-8 p-5 sm:p-7">
         <CheckoutProgress currentStep={step} />
 
         {step === 'attendees' && (
           <form className="space-y-6" onSubmit={continueToPayment}>
             <div>
-              <h2 className="display text-2xl">Who is joining?</h2>
+              <h2 className="display text-3xl">Who is joining?</h2>
               <p className="mt-2 text-sm text-muted">Enter the name and email address for each ticket.</p>
             </div>
 
             {attendees.map((attendee, index) => (
-              <fieldset key={index} className="grid gap-4 border-t border-line pt-5 sm:grid-cols-2">
-                <legend className="px-1 text-sm font-semibold">Attendee {index + 1}</legend>
+              <fieldset key={index} className="grid gap-4 border-t-2 border-dashed border-ink/15 pt-5 sm:grid-cols-2">
+                <legend className="px-1 font-mono text-[10px] tracking-[0.08em] text-muted uppercase">
+                  Attendee {String(index + 1).padStart(2, '0')}
+                </legend>
                 <Field label="Full name" htmlFor={`attendee-${index}-name`}>
                   <input
                     id={`attendee-${index}-name`}
@@ -236,7 +265,7 @@ function CheckoutFlow({ id }) {
               </fieldset>
             ))}
 
-            <p className="rounded-sm bg-ink/5 p-3 text-xs text-muted">
+            <p className="rounded-[3px] border-2 border-ink/20 bg-cream p-3 text-xs leading-relaxed text-ink/80">
               The buyer will receive one email containing all ticket QR codes. Attendees will not receive separate emails.
             </p>
             <button type="submit" className="btn btn-dark w-full">Continue to {isPaid ? 'payment' : 'claim'}</button>
@@ -246,25 +275,29 @@ function CheckoutFlow({ id }) {
         {step === 'payment' && (
           <form className="space-y-5" onSubmit={completeCheckout}>
             <div>
-              <h2 className="display text-2xl">{isPaid ? 'Review and pay' : 'Review and claim'}</h2>
-              <p className="mt-2 text-sm text-muted">
+              <h2 className="display text-3xl">{isPaid ? 'Review and pay' : 'Review and claim'}</h2>
+              <p className="mt-2 font-mono text-[11px] tracking-[0.06em] text-muted uppercase">
                 {quantity} ticket{quantity === 1 ? '' : 's'} · {isPaid ? formatMoney(event.price * quantity) : 'Free'}
               </p>
             </div>
 
-            <ul className="space-y-2 border-y border-line py-4">
+            <ul className="space-y-3 border-y-2 border-dashed border-ink/15 py-4">
               {attendees.map((attendee, index) => (
                 <li key={index} className="flex flex-col justify-between gap-1 text-sm sm:flex-row">
-                  <span>{attendee.name}</span>
+                  <span className="font-medium">{attendee.name}</span>
                   <span className="text-muted">{attendee.email}</span>
                 </li>
               ))}
             </ul>
 
             {isPaid ? (
-              <>
-                <p className="rounded-sm bg-peach/50 p-3 text-xs text-muted">
-                  Demo payment: this checkout does not charge a card or store card details.
+              <div className="space-y-4 rounded-[3px] border-2 border-dashed border-ink/25 bg-cream/50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="eyebrow">Demo payment</p>
+                  <span className="badge">No real charge</span>
+                </div>
+                <p className="text-xs leading-relaxed text-muted">
+                  This checkout does not charge a card or store card details.
                 </p>
                 <div className="grid gap-3">
                   <Field label="Demo card number" htmlFor="card-number">
@@ -314,12 +347,14 @@ function CheckoutFlow({ id }) {
                     </Field>
                   </div>
                 </div>
-              </>
+              </div>
             ) : (
-              <p className="rounded-sm bg-sage p-3 text-sm text-muted">No payment is required for these tickets.</p>
+              <p className="rounded-[3px] border-2 border-ink/20 bg-cream p-3 text-sm text-ink/80">
+                No payment is required for these tickets.
+              </p>
             )}
 
-            {error && <p role="alert" className="text-sm text-accent">{error}</p>}
+            {error && <p role="alert" className="alert-danger">{error}</p>}
             <div className="flex flex-col gap-3 sm:flex-row">
               <button type="button" className="btn btn-outline flex-1" onClick={() => setStep('attendees')}>
                 Back to attendee details
@@ -337,31 +372,41 @@ function CheckoutFlow({ id }) {
 
         {step === 'complete' && (
           <section aria-labelledby="checkout-complete-heading">
-            <h2 id="checkout-complete-heading" className="display text-2xl">You’re all set</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 id="checkout-complete-heading" className="display text-3xl">You’re all set</h2>
+              <span className="badge bg-leaf text-cream">Confirmed</span>
+            </div>
             {result?.demo ? (
-              <p className="mt-2 text-sm text-muted">
+              <p className="mt-3 text-sm leading-relaxed text-muted">
                 Demo booking saved in this browser. No attendee email was sent because the API is offline.
               </p>
             ) : (
-              <p className="mt-2 text-sm text-muted">
+              <p className="mt-3 text-sm leading-relaxed text-muted">
                 Your booking is confirmed. The buyer receives one email with all ticket QR codes when email delivery is configured.
               </p>
             )}
-            <ul className="mt-5 space-y-3">
+            <ul className="mt-6 space-y-5">
               {tickets.map((ticket) => {
                 const emailStatus = result?.receipt_emails?.find(
                   (receipt) => receipt.reference_code === ticket.reference_code,
                 )
                 return (
-                  <li key={ticket.reference_code} className="rounded-sm border border-line p-4">
-                    <p className="font-semibold">{ticket.attendee_name}</p>
-                    <p className="mt-1 text-sm text-muted">{ticket.attendee_email}</p>
-                    <p className="mt-2 font-mono text-sm">Ticket: {ticket.reference_code}</p>
-                    <div className="mt-4">
+                  <li key={ticket.reference_code} className="ticket p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">{ticket.attendee_name}</p>
+                        <p className="mt-1 text-sm text-muted">{ticket.attendee_email}</p>
+                      </div>
+                      <span className="badge">Ticket</span>
+                    </div>
+                    <p className="mt-3 border-t border-dashed border-ink/20 pt-3 font-mono text-[11px] tracking-[0.04em]">
+                      {ticket.reference_code}
+                    </p>
+                    <div className="mt-5">
                       <TicketQrCode value={ticket.reference_code} />
                     </div>
                     {emailStatus && (
-                      <p className={`mt-2 text-xs ${emailStatus.sent ? 'text-teal' : 'text-accent'}`}>
+                      <p className={`mt-3 text-xs ${emailStatus.sent ? 'text-leaf' : 'text-danger'}`}>
                         {emailStatus.sent ? 'Buyer confirmation email sent' : 'Email could not be sent; keep this ticket reference'}
                       </p>
                     )}
@@ -369,17 +414,19 @@ function CheckoutFlow({ id }) {
                 )
               })}
             </ul>
-            <a
-              href={googleCalendarUrl(event)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-outline mt-6 inline-flex"
-            >
-              Add to Google Calendar
-            </a>
-            <Link to={`/events/${event.id}`} className="btn btn-dark mt-6 inline-flex">
-              Return to event
-            </Link>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <a
+                href={googleCalendarUrl(event)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-outline"
+              >
+                Add to Google Calendar
+              </a>
+              <Link to={`/events/${event.id}`} className="btn btn-dark">
+                Return to event
+              </Link>
+            </div>
           </section>
         )}
       </section>
