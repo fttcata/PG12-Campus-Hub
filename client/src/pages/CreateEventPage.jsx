@@ -16,6 +16,7 @@ const EMPTY_FORM = {
   description: '',
   category: 'Social',
   date: '',
+  endDate: '',
   location: '',
   capacity: '50',
   price: '0',
@@ -29,6 +30,7 @@ function toForm(event) {
     description: event.description,
     category: event.category,
     date: toDateTimeInput(event.date),
+    endDate: event.endDate ? toDateTimeInput(event.endDate) : '',
     location: event.location,
     capacity: String(event.capacity),
     price: String(event.price),
@@ -58,7 +60,14 @@ function EventForm({ existing, persisted = false }) {
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const eventStart = new Date(form.date)
+    const startTime = new Date(form.date).getTime()
+    const endTime = new Date(form.endDate).getTime()
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) {
+      setErrors({ ...nextErrors, ...(!Number.isFinite(startTime) ? { date: 'Enter a valid start date and time.' } : {}), ...(!Number.isFinite(endTime) ? { endDate: 'Enter a valid end date and time.' } : {}) })
+      return
+    }
+
+    const eventStart = new Date(startTime)
     const eventData = {
       ...(existing && { id: existing.id }),
       type: form.type,
@@ -66,6 +75,7 @@ function EventForm({ existing, persisted = false }) {
       description: form.description.trim(),
       category: isFundraiser ? 'Charity' : form.category,
       date: new Date(form.date).toISOString(),
+      endDate: new Date(form.endDate).toISOString(),
       deadline: new Date(eventStart.getTime() - 2 * 60 * 60 * 1000).toISOString(),
       location: form.location.trim(),
       capacity: isFundraiser ? 0 : Number(form.capacity),
@@ -77,6 +87,7 @@ function EventForm({ existing, persisted = false }) {
         const response = await createEvent({
           ...eventData,
           event_type: form.type === 'fundraiser' ? 'fundraiser' : 'standard',
+          end_date: eventData.endDate,
           total_tickets: eventData.capacity,
           fundraiser_goal: eventData.goal,
         })
@@ -160,6 +171,17 @@ function EventForm({ existing, persisted = false }) {
           </Field>
         </div>
 
+        <Field label="Ends" htmlFor="endDate" error={errors.endDate}>
+          <input
+            id="endDate"
+            name="endDate"
+            type="datetime-local"
+            className={inputClass('endDate')}
+            value={form.endDate}
+            onChange={handleChange}
+          />
+        </Field>
+
         {isFundraiser ? (
           <Field label="Fundraising goal (HK$)" htmlFor="goal" error={errors.goal}>
             <input
@@ -226,11 +248,14 @@ function EventForm({ existing, persisted = false }) {
             Map preview appears here
           </div>
         )}
+        <p className="text-xs text-muted">
+          * We take a 5% fee on proceeds from tickets sold through our website. This does not apply to fundraisers.
+        </p>
         <button type="submit" className="btn btn-dark w-full">
           {existing ? 'Save changes' : 'Publish event'}
         </button>
         {Object.values(errors).some(Boolean) && (
-          <p className="text-center text-xs text-accent">{errors.form || 'Please fix the highlighted fields.'}</p>
+          <p role="alert" className="text-center text-xs text-red-700">{errors.form || 'Please fix the highlighted fields.'}</p>
         )}
       </aside>
     </form>

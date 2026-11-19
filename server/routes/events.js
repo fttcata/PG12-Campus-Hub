@@ -1,10 +1,11 @@
 import crypto from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { Router } from 'express'
-import { sendBookingSummary, sendDonationReceipt, sendTicketReceipt } from '../config/email.js'
+import { sendBookingSummary, sendDonationReceipt } from '../config/email.js'
 import { optionalAuth, requireAdmin, requireAuth } from '../middleware/auth.js'
 import { findCategoryById, findCategoryByName } from '../queries/categories.js'
 import { insertEventMessage, isChatMember, listEventMessages } from '../queries/chat.js'
+import { broadcastChatMessage } from '../realtime/chat.js'
 import { logEmail } from '../queries/emailLog.js'
 import {
   cancelEvent,
@@ -27,8 +28,10 @@ import {
   cancelTicket,
   insertTicket,
   listTicketsByCodes,
+  lockTicketByCodeForEvent,
   lockTicketsForUsers,
   lockUserTicket,
+  markTicketCheckedIn,
   reconfirmTicket,
 } from '../queries/tickets.js'
 import { withTransaction } from '../queries/transaction.js'
@@ -46,6 +49,7 @@ const DEFAULT_LIMIT = 12
 const MAX_LIMIT = 50
 const MAX_TICKET_QUANTITY = 4
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const TICKET_CODE_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Organizer contact details (email, student ID) are only shown to signed-in viewers.
 function serializeOrganizer(row, viewer) {
@@ -60,7 +64,7 @@ function serializeOrganizer(row, viewer) {
   return { ...organizer, email: row.organizer_email, student_id: row.organizer_student_id }
 }
 
-function serializeEvent(row, viewer) {
+export function serializeEvent(row, viewer) {
   // capacity = 0 means unlimited seats; standard events keep a stored available_tickets counter.
   const remaining = row.capacity > 0 ? row.available_tickets : null
   const goal = row.goal_amount
@@ -303,6 +307,7 @@ router.post('/:id/messages', requireAuth, requireChatAccess, async (request, res
     userId: request.user.id,
     content,
   })
+  broadcastChatMessage(request.eventId, message)
   return response.status(201).json({ message })
 })
 
@@ -388,6 +393,14 @@ async function parseEventInput(body, { allowPastDate = false } = {}) {
     return { error: 'The event must be in the future' }
   }
 
+  const endsAt = new Date(body.end_date)
+  if (typeof body.end_date !== 'string' || Number.isNaN(endsAt.getTime())) {
+    return { error: 'end_date must be a valid date' }
+  }
+  if (endsAt <= startsAt) {
+    return { error: 'end_date must be after date' }
+  }
+
   if (!EVENT_TYPES.includes(eventType)) {
     return { error: "event_type must be 'standard' or 'fundraiser'" }
   }
@@ -454,6 +467,7 @@ async function parseEventInput(body, { allowPastDate = false } = {}) {
       latitude: latitude.value,
       longitude: longitude.value,
       event_date: startsAt,
+      end_date: endsAt,
       // registration_deadline is computed, never taken from the client: exactly 2h before the start.
       registration_deadline: new Date(startsAt.getTime() - REGISTRATION_CLOSES_BEFORE_MS),
       event_type: eventType,
@@ -529,15 +543,21 @@ router.post('/', requireAuth, async (request, response) => {
 })
 
 // Loads an event for an organizer-only route inside a transaction: 404 when it is missing
-// (or a draft), 403 when the signed-in user is not its organizer. Returns { row } or { status, error }.
-async function findOwnedEvent(connection, rawId, user) {
+// (or a draft), 403 when the signed-in user is not its organizer. Admins can manage events,
+// except for check-in, which is restricted to the event organizer.
+async function findOwnedEvent(
+  connection,
+  rawId,
+  user,
+  { allowAdmin = true, unauthorizedMessage = 'Only the event organizer can change this event' } = {},
+) {
   const eventId = parseEventId(rawId)
   if (eventId === null) return { status: 404, ...EVENT_NOT_FOUND }
 
   const row = await lockEventRow(connection, eventId)
   if (!row) return { status: 404, ...EVENT_NOT_FOUND }
-  if (row.organizer_id !== user.id && user.role !== 'admin') {
-    return { status: 403, error: 'Only the event organizer can change this event' }
+  if (row.organizer_id !== user.id && (!allowAdmin || user.role !== 'admin')) {
+    return { status: 403, error: unauthorizedMessage }
   }
   return { row }
 }
@@ -563,6 +583,7 @@ router.put('/:id', requireAuth, rejectExternalEvent, async (request, response) =
       latitude: row.latitude,
       longitude: row.longitude,
       date: row.event_date.toISOString(),
+      end_date: row.end_date?.toISOString() ?? null,
       type: row.event_type,
       total_tickets: row.capacity,
       price: row.price,
@@ -725,36 +746,40 @@ function parseAttendees(body, buyerEmail) {
   return { emails }
 }
 
-// Sends receipts after the booking has committed. Called without awaiting so the HTTP response
-// is not held open by SMTP; every ticket outcome is still recorded in email_log.
+// Sends one summary after the booking has committed. Only the buyer receives this email;
+// it contains every ticket and QR code in the booking.
 async function sendBookingEmails({ buyer, event, tickets }) {
-  const sends = tickets.map((ticket) => sendTicketReceipt({ user: ticket.attendee, event, ticket }))
-  const buyerIsAttendee = tickets.some((ticket) => ticket.user_id === buyer.id)
-  if (!buyerIsAttendee) {
-    sends.push(sendBookingSummary({ user: buyer, event, tickets }))
+  const [result] = await Promise.allSettled([sendBookingSummary({ user: buyer, event, tickets })])
+  const sent = result.status === 'fulfilled'
+  if (!sent) {
+    console.error(
+      `Booking summary for ${tickets.map((ticket) => ticket.ticket_code).join(', ')} was not emailed: ${
+        result.reason?.message ?? result.reason
+      }`,
+    )
   }
-  const results = await Promise.allSettled(sends)
-  const ticketResults = results.slice(0, tickets.length)
-  results.forEach((result, index) => {
-    if (result.status === 'rejected') {
-      const label = tickets[index]?.ticket_code ?? 'booking summary'
-      console.error(`Ticket receipt ${label} was not emailed: ${result.reason?.message ?? result.reason}`)
-    }
-  })
-  await Promise.all(
-    tickets.map((ticket, index) =>
-      logEmail(ticket.user_id, 'booking', ticket.ticket_code, ticketResults[index].status === 'fulfilled'),
+
+  const logResults = await Promise.allSettled(
+    tickets.map((ticket) =>
+      logEmail(buyer.id, 'booking', ticket.ticket_code, sent),
     ),
   )
+  logResults.forEach((logResult, index) => {
+    if (logResult.status === 'rejected') {
+      console.error(`Booking email result for ${tickets[index].ticket_code} was not logged: ${logResult.reason?.message ?? logResult.reason}`)
+    }
+  })
+
   return tickets.map((ticket, index) => ({
     reference_code: ticket.ticket_code,
-    email: ticket.attendee.email,
-    sent: ticketResults[index].status === 'fulfilled',
+    email: buyer.email,
+    sent,
   }))
 }
 
 // Protected, verified students only (HANDOFF.md §1). Each attendee gets their own ticket row and
-// code; purchased_by records the buyer. Seats are a stored counter, so the capacity check,
+// code; purchased_by records the buyer. The buyer receives the only booking email. Seats are a
+// stored counter, so the capacity check,
 // decrement, and every insert/update run while the event row is locked.
 router.post('/:id/tickets', requireAuth, rejectExternalEvent, async (request, response) => {
   if (!request.user.is_verified) {
@@ -898,12 +923,71 @@ router.post('/:id/tickets', requireAuth, rejectExternalEvent, async (request, re
     console.error(`Booking emails for ${tickets.map((ticket) => ticket.ticket_code).join(', ')} failed: ${error.message}`)
     receiptEmails = tickets.map((ticket) => ({
       reference_code: ticket.ticket_code,
-      email: ticket.attendee.email,
+      email: request.user.email,
       sent: false,
     }))
   }
 
   return response.status(201).json({ tickets, ticket: tickets[0], event, receipt_emails: receiptEmails })
+})
+
+router.post('/:id/check-in', requireAuth, async (request, response) => {
+  const rawTicketCode = request.body?.ticket_code
+  const ticketCode = typeof rawTicketCode === 'string' ? rawTicketCode.trim().toLowerCase() : ''
+  if (!TICKET_CODE_PATTERN.test(ticketCode)) {
+    return response.status(400).json({ error: 'ticket_code must be a valid ticket UUID' })
+  }
+
+  let result
+  const earlyResponse = await withTransaction(async (connection) => {
+    const { row, status, error } = await findOwnedEvent(connection, request.params.id, request.user, {
+      allowAdmin: false,
+      unauthorizedMessage: 'Only the event organizer can check in tickets',
+    })
+    if (error) return { status, body: { error } }
+    if (row.status === 'cancelled') {
+      return { status: 409, body: { error: 'This event has been cancelled' } }
+    }
+    if (row.source) {
+      return { status: 409, body: { error: 'This event does not use Campus Hub tickets' } }
+    }
+    if (row.event_type !== 'standard') {
+      return { status: 409, body: { error: 'Check-in is only available for standard events' } }
+    }
+
+    const ticket = await lockTicketByCodeForEvent(connection, row.id, ticketCode)
+    if (!ticket) {
+      return { status: 404, body: { error: 'Ticket not found for this event' } }
+    }
+    if (ticket.status !== 'confirmed') {
+      return { status: 409, body: { error: 'This ticket has been cancelled' } }
+    }
+
+    const alreadyCheckedIn = ticket.checked_in_at !== null
+    let checkedInAt = ticket.checked_in_at
+    if (!alreadyCheckedIn) {
+      checkedInAt = new Date()
+      checkedInAt.setMilliseconds(0)
+      await markTicketCheckedIn(connection, ticket.id, checkedInAt)
+    }
+
+    result = {
+      check_in: {
+        ticket_code: ticket.ticket_code,
+        attendee_name: ticket.attendee_name,
+        attendee_email: ticket.attendee_email,
+        type: ticket.type,
+        status: ticket.status,
+        amount_paid: ticket.amount_paid,
+        checked_in_at: checkedInAt,
+        already_checked_in: alreadyCheckedIn,
+      },
+    }
+    return null
+  })
+
+  if (earlyResponse) return response.status(earlyResponse.status).json(earlyResponse.body)
+  return response.status(200).json(result)
 })
 
 // Protected. Cancelling releases the seat and restores the stored counter; the row stays as a

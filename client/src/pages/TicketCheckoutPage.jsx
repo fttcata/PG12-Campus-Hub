@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useEvents } from '../hooks/useEvents.js'
 import { formatDateTime, formatMoney } from '../utils/format.js'
 import TicketQrCode from '../components/TicketQrCode.jsx'
+import { googleCalendarUrl } from '../utils/calendar.js'
 
 const STEPS = [
   ['attendees', 'Attendee details'],
@@ -236,7 +237,7 @@ function CheckoutFlow({ id }) {
             ))}
 
             <p className="rounded-sm bg-ink/5 p-3 text-xs text-muted">
-              Each attendee will receive their own ticket confirmation at the email address provided.
+              The buyer will receive one email containing all ticket QR codes. Attendees will not receive separate emails.
             </p>
             <button type="submit" className="btn btn-dark w-full">Continue to {isPaid ? 'payment' : 'claim'}</button>
           </form>
@@ -343,7 +344,7 @@ function CheckoutFlow({ id }) {
               </p>
             ) : (
               <p className="mt-2 text-sm text-muted">
-                Your booking is confirmed. Ticket emails are sent individually to each attendee when email delivery is configured.
+                Your booking is confirmed. The buyer receives one email with all ticket QR codes when email delivery is configured.
               </p>
             )}
             <ul className="mt-5 space-y-3">
@@ -361,13 +362,21 @@ function CheckoutFlow({ id }) {
                     </div>
                     {emailStatus && (
                       <p className={`mt-2 text-xs ${emailStatus.sent ? 'text-teal' : 'text-accent'}`}>
-                        {emailStatus.sent ? 'Confirmation email sent' : 'Email could not be sent; keep this ticket reference'}
+                        {emailStatus.sent ? 'Buyer confirmation email sent' : 'Email could not be sent; keep this ticket reference'}
                       </p>
                     )}
                   </li>
                 )
               })}
             </ul>
+            <a
+              href={googleCalendarUrl(event)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-outline mt-6 inline-flex"
+            >
+              Add to Google Calendar
+            </a>
             <Link to={`/events/${event.id}`} className="btn btn-dark mt-6 inline-flex">
               Return to event
             </Link>

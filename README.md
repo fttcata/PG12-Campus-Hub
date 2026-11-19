@@ -7,15 +7,38 @@ Modern Tech on WWW group project. (COMP3322)
 - `server/`: Node.js, Express, `mysql2`, standard parameterized SQL
 - `database/`: MySQL 8 initialization and seed data
 
-## Run locally
+## Run with Docker
 
-Requirements: Node.js 20+ and Docker Desktop.
+Requirement: Docker Engine with the Compose plugin. Node.js, MySQL, and Nginx run inside the
+containers; they do not need to be installed on the deployment server.
 
-```powershell
-docker compose up -d
+```sh
+docker compose up -d --build
 ```
 
-Open `http://localhost`. The client container serves the React SPA on port 80 and proxies `/api` to the Express container on port 5000. The API is also available on host port 5001, and MySQL on host port 3307, to avoid common local port conflicts.
+Open `http://localhost` locally, or `http://<school-server-hostname>` when deployed remotely.
+The client container serves the React SPA on port 80 and proxies `/api` and `/socket.io` to the
+private Express container over the Compose network. The backend and MySQL ports are not published
+to the host; MySQL is reachable by the backend at `mysql:3306` only.
+
+For the marking server, use the HTTP URL:
+
+```text
+http://c3322-pgXX.cs.hku.hk
+```
+
+Replace `c3322-pgXX` with the hostname assigned to your server.
+
+Check the deployment from the server with:
+
+```sh
+docker compose ps
+docker compose logs --tail=100 mysql
+docker compose logs --tail=100 server
+curl -i http://localhost/api/health
+```
+
+The MySQL health check ensures the backend starts only after MySQL accepts connections.
 
 For local development without Docker:
 
@@ -30,8 +53,8 @@ The Vite client runs at `http://localhost:5173` and proxies API calls to `http:/
 Useful checks:
 
 ```powershell
-Invoke-RestMethod http://localhost:5001/api/health
-Invoke-RestMethod http://localhost:5001/api/events
+Invoke-RestMethod http://localhost/api/health
+Invoke-RestMethod http://localhost/api/events
 ```
 
 ### Admin access
@@ -45,30 +68,77 @@ cd server
 npm run admin:promote -- your-verified-account@example.com
 ```
 
-For Docker-based development, run the command on the host from the `server` directory after
-dependencies are installed, using host port 3307 for the Compose database:
+For Docker-based development, run the command inside the backend container:
 
 ```sh
-DB_HOST=127.0.0.1 DB_PORT=3307 npm run admin:promote -- your-verified-account@example.com
+docker compose exec server npm run admin:promote -- your-verified-account@example.com
 ```
 
 Log out and sign in again after promotion. Admins can manage published
-events from the Admin link; cancelling an event keeps its tickets and pledges as records.
+events and delete eligible student accounts from the Admin link. Cancelling an event keeps its
+tickets and pledges as records. Accounts owning events or tickets purchased for other attendees
+must be handled before they can be deleted.
 
 The database credentials in `server/.env.example` match `docker-compose.yml` for local development only. Do not use them in production.
 
-Email receipts: set `SMTP_USER` / `SMTP_PASSWORD` in `server/.env` to your Mailtrap sandbox credentials
-(Mailtrap → Sandboxes → SMTP). The Docker server reads its `SMTP_*` settings from that file too, so run
-`docker compose up -d server` after changing it. On startup the server logs `SMTP ready` or why SMTP failed.
-
-Ticket checkout collects a name and email address for each attendee. Each ticket is stored with its
-attendee details and its own reference code, and confirmation is sent to that attendee when SMTP is
-configured. After updating an existing MySQL volume, run this migration once from the repository root:
+Email receipts use the **Mailtrap Email Sandbox**. Copy `server/.env.example` to `server/.env`,
+then add your Mailtrap credentials before starting Compose:
 
 ```sh
-DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=student_events DB_USER=app_user DB_PASSWORD=app_password \
-  npm run db:migrate-ticket-attendees --prefix server
+cp server/.env.example server/.env
 ```
 
-The migration backfills existing tickets from their purchaser accounts and can be safely rerun.
-Fresh databases get the attendee fields from `database/init.sql`.
+On startup the server logs `SMTP ready (sandbox.smtp.mailtrap.io:2525)` when the connection succeeds.
+
+### Demo data (pre-loaded on first boot)
+
+`database/init.sql` seeds the database the first time the MySQL volume is created, so
+`docker compose up -d --build` on a fresh machine opens on realistic Hong Kong university events (free,
+paid, sold out, and fundraisers with live goal progress). Event dates are computed from the moment the
+database boots, so they are always upcoming. To start over from the seed:
+
+```sh
+docker compose down -v          # deletes the MySQL volume and all its data
+docker compose up --build
+```
+
+The seed creates 8 organizer accounts, 160 student accounts, ~770 confirmed tickets, 100 pledges, chat
+messages and bookmarks. Every account uses the password `Demo1234!` (the client only accepts
+HKU/CUHK/PolyU domains):
+
+- `demo.student@connect.hku.hk` — student dashboard with a ticket for every event and a pledge to every fundraiser
+- `hku.careers@connect.hku.hk` — organizer of the HKU Careers Fair (starts ~5 hours after boot, so its chat room is open)
+- `admin@connect.hku.hk` — administrator (admin events page, user management)
+- `pending@connect.hku.hk` — unverified student; verification code `VRF7K3M2Q9P4XN8D`
+
+To refresh the demo dates on a database that is already running without wiping it:
+
+```sh
+cd server
+npm run db:populate-demo             # add anything missing; safe to rerun
+npm run db:populate-demo -- --reset  # rebuild the demo events with fresh dates
+```
+
+`--reset` also cancels app events whose date has already passed, so the listing opens on upcoming
+events instead of leftovers from an earlier seed.
+
+For non-Docker development, copy `server/.env.example` to `server/.env` and set its `SMTP_*`
+values to your Mailtrap sandbox credentials. The server explicitly loads `server/.env` even when
+started from the repository root.
+
+Ticket checkout collects a name and email address for each attendee. Each ticket is stored with its
+attendee details and its own reference code. When SMTP is configured, only the buyer receives one
+confirmation containing all ticket QR codes. After updating an existing MySQL volume, run this
+migration once from the repository root:
+
+```sh
+docker compose exec server npm run db:migrate-ticket-attendees
+docker compose exec server npm run db:migrate-ticket-checkin
+```
+
+The migrations backfill existing tickets from their purchaser accounts and add the check-in timestamp;
+both can be safely rerun. Fresh databases get these fields from `database/init.sql`.
+
+Event organizers and administrators can open the ticket scanner from the event page, dashboard, or
+admin event list. Camera access requires a secure context: use `http://localhost` during development,
+or HTTPS when opening the site from another device on the network.

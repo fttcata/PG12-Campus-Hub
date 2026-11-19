@@ -6,7 +6,7 @@ import Receipt from '../components/Receipt.jsx'
 import TicketCounter from '../components/TicketCounter.jsx'
 import EventChatRoom from '../components/EventChatRoom.jsx'
 import FundraiserDonateModal from '../components/FundraiserDonateModal.jsx'
-import { cancelEvent, fetchEvent } from '../api/events.js'
+import { cancelEvent, donateToEvent, fetchEvent, fetchMyTickets } from '../api/events.js'
 import { useActivity } from '../context/ActivityContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useEvents } from '../hooks/useEvents.js'
@@ -18,6 +18,7 @@ import {
   getSafeExternalUrl,
   KIND_LABELS,
 } from '../utils/format.js'
+import { googleCalendarUrl } from '../utils/calendar.js'
 import NotFoundPage from './NotFoundPage.jsx'
 
 const QUICK_AMOUNTS = [20, 50, 100, 200]
@@ -106,25 +107,49 @@ function TicketPanel({ event }) {
 }
 
 // Fundraiser pledge form with live progress towards the goal.
-function PledgePanel({ event }) {
+// API events are pledged through POST /events/:id/donate; demo events (API offline) stay in this browser.
+function PledgePanel({ event, isApiEvent }) {
   const { user } = useAuth()
   const { pledge } = useActivity()
   const now = useNow()
   const [amount, setAmount] = useState('50')
   const [receipt, setReceipt] = useState(null)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
   const [donateOpen, setDonateOpen] = useState(false)
 
   const isClosed = new Date(event.date).getTime() - REGISTRATION_CLOSES_BEFORE_MS <= now
-  const percent = event.goal > 0 ? Math.round((event.raised / event.goal) * 100) : 0
+  const percentOf = (raised) => (event.goal > 0 ? Math.round((raised / event.goal) * 100) : 0)
+  const percent = percentOf(event.raised)
 
-  function handleSubmit(e) {
+  function showApiReceipt(result) {
+    setReceipt({
+      reference: result.pledge.reference_code,
+      amount: Number(result.pledge.amount),
+      raised: Number(result.event?.raised_amount ?? event.raised + Number(result.pledge.amount)),
+    })
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault()
     const value = Number(amount)
     if (!Number.isInteger(value) || value < 10) return setError('Pledges must be a whole amount of at least HK$10.')
     if (value > 100000) return setError('Pledges are capped at HK$100,000.')
     setError('')
-    setReceipt(pledge(event, value))
+
+    if (!isApiEvent) {
+      const donation = pledge(event, value)
+      setReceipt({ ...donation, raised: event.raised + value })
+      return
+    }
+    setSaving(true)
+    try {
+      showApiReceipt(await donateToEvent(event.id, value))
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (receipt) {
@@ -136,7 +161,7 @@ function PledgePanel({ event }) {
         rows={[
           ['Campaign', event.title],
           ['Amount', formatMoney(receipt.amount)],
-          ['New total', `${formatMoney(event.raised)} (${percent}%)`],
+          ['New total', `${formatMoney(receipt.raised)} (${percentOf(receipt.raised)}%)`],
         ]}
       />
     )
@@ -195,12 +220,12 @@ function PledgePanel({ event }) {
             />
           </label>
           {error && <p className="text-xs text-accent">{error}</p>}
-          <button type="submit" className="btn btn-accent w-full">
-            Pledge {amount && Number(amount) > 0 ? formatMoney(amount) : ''}
+          <button type="submit" className="btn btn-accent w-full" disabled={saving}>
+            {saving ? 'Processing…' : `Pledge ${amount && Number(amount) > 0 ? formatMoney(amount) : ''}`}
           </button>
         </div>
       )}
-      {donateOpen && <FundraiserDonateModal event={event} onClose={() => setDonateOpen(false)} onSuccess={(result) => { setDonateOpen(false); setReceipt({ reference: result.pledge.reference_code, amount: result.pledge.amount }) }} />}
+      {donateOpen && <FundraiserDonateModal event={event} onClose={() => setDonateOpen(false)} onSuccess={(result) => { setDonateOpen(false); showApiReceipt(result) }} />}
     </form>
   )
 }
@@ -208,9 +233,11 @@ function PledgePanel({ event }) {
 export default function EventDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const { bookmarks, toggleBookmark } = useActivity()
-  const { events, loading } = useEvents()
+  const { user, token } = useAuth()
+  const { bookings, bookmarks, toggleBookmark } = useActivity()
+  const { events, source, loading } = useEvents()
+  const ownerKey = user && token ? String(user.id ?? user.email) : ''
+  const [ticketResult, setTicketResult] = useState({ ownerKey: '', eventIds: [], error: '' })
   const listedEvent = events.find((e) => e.id === id)
   const [detailResult, setDetailResult] = useState(null)
   const currentDetailResult = detailResult?.id === id ? detailResult : null
@@ -219,6 +246,34 @@ export default function EventDetailPage() {
   const detailLoading = !loading && !listedEvent && !currentDetailResult
   const [adminError, setAdminError] = useState('')
   const [canceling, setCanceling] = useState(false)
+
+  useEffect(() => {
+    if (!ownerKey) {
+      setTicketResult({ ownerKey: '', eventIds: [], error: '' })
+      return undefined
+    }
+
+    let active = true
+    fetchMyTickets()
+      .then((tickets) => {
+        if (active) {
+          setTicketResult({
+            ownerKey,
+            eventIds: tickets
+              .filter((ticket) => ticket.status === 'confirmed')
+              .map((ticket) => String(ticket.event.id)),
+            error: '',
+          })
+        }
+      })
+      .catch((requestError) => {
+        if (active) setTicketResult({ ownerKey, eventIds: [], error: requestError.message })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [ownerKey, token])
 
   useEffect(() => {
     if (loading || listedEvent) return
@@ -238,6 +293,9 @@ export default function EventDetailPage() {
   }, [id, loading, listedEvent])
 
   const event = listedEvent ?? requestedEvent
+  // Demo events also have numeric ids, so where the event came from decides, not the id format.
+  const isApiEvent =
+    Boolean(event) && !String(event.id).startsWith('local-') && (listedEvent ? source === 'api' : Boolean(requestedEvent))
 
   if (loading || detailLoading) {
     return <main className="mx-auto max-w-6xl px-4 py-16 text-muted sm:px-6">Loading event…</main>
@@ -299,6 +357,16 @@ export default function EventDetailPage() {
 
   const kind = getEventKind(event)
   const isSaved = bookmarks.includes(event.id)
+  const currentTicketResult = ticketResult.ownerKey === ownerKey ? ticketResult : null
+  const hasLocalBooking = bookings.some((booking) => String(booking.eventId) === event.id)
+  const hasJoined = hasLocalBooking || currentTicketResult?.eventIds.includes(event.id)
+  const canCheckIn =
+    user &&
+    /^\d+$/.test(event.id) &&
+    !event.isScraped &&
+    kind !== 'fundraiser' &&
+    event.status !== 'cancelled' &&
+    (user.role === 'admin' || String(event.organizerId) === String(user.id))
 
   function handleBookmark() {
     if (!user) return navigate('/login', { state: { from: `/events/${event.id}` } })
@@ -368,15 +436,35 @@ export default function EventDetailPage() {
         </section>
 
         <aside className="space-y-3 self-start lg:sticky lg:top-24">
+          {currentTicketResult?.error && !hasLocalBooking && (
+            <p role="alert" className="rounded-sm bg-peach/50 p-3 text-sm text-accent">
+              Unable to check your booking status: {currentTicketResult.error}
+            </p>
+          )}
           {event.status === 'cancelled' ? (
             <div className="panel text-sm text-muted">Registration and pledges are closed for this event.</div>
           ) : (
             <>
-              {kind === 'fundraiser' ? <PledgePanel event={event} /> : <TicketPanel event={event} />}
+              {kind === 'fundraiser' ? <PledgePanel event={event} isApiEvent={isApiEvent} /> : <TicketPanel event={event} />}
+              {kind !== 'fundraiser' && hasJoined && (
+                <a
+                  href={googleCalendarUrl(event)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline w-full"
+                >
+                  Add to Google Calendar
+                </a>
+              )}
               <button type="button" className="btn btn-outline w-full" onClick={handleBookmark}>
                 {isSaved ? '★ Saved to dashboard' : '☆ Save for later'}
               </button>
             </>
+          )}
+          {canCheckIn && (
+            <Link to={`/events/${event.id}/check-in`} className="btn btn-accent w-full">
+              Scan tickets
+            </Link>
           )}
           {user?.role === 'admin' && (
             <section className="panel space-y-3" aria-label="Administrator controls">

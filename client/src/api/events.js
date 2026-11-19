@@ -23,6 +23,7 @@ export function normalizeEvent(raw) {
     isExternal: raw.is_external === true || raw.source != null,
     originalUrl: raw.original_url ?? raw.source_url ?? raw.originalUrl ?? raw.sourceUrl ?? '',
     date: raw.date,
+    endDate: raw.end_date ?? raw.endDate ?? null,
     deadline: raw.registration_deadline ?? raw.deadline ?? raw.date,
     location: raw.location,
     latitude: raw.latitude != null ? Number(raw.latitude) : null,
@@ -88,6 +89,21 @@ export async function fetchMyTickets() {
   return data.tickets
 }
 
+export async function fetchMyPledges() {
+  const data = await apiGet('/users/me/pledges')
+  return data.pledges
+}
+
+// Every listing the signed-in user organises (not paginated, unlike GET /events).
+export async function fetchMyEvents() {
+  const data = await apiGet('/users/me/events')
+  return data.events.map(normalizeEvent)
+}
+
+export async function donateToEvent(id, amount) {
+  return apiPost(`/events/${encodeURIComponent(id)}/donate`, { amount })
+}
+
 export async function createEvent(payload) {
   return apiPost('/events', payload)
 }
@@ -114,6 +130,7 @@ export async function updateEvent(id, event) {
     description: event.description,
     category: event.category,
     date: event.date,
+    end_date: event.endDate,
     location: event.location,
     event_type: event.type === 'fundraiser' ? 'fundraiser' : 'standard',
     total_tickets: event.capacity,
@@ -144,10 +161,23 @@ export async function deleteAllCedarsEvents() {
   return apiDelete('/events/admin/cedars')
 }
 
+export async function fetchAdminUsers() {
+  const data = await apiGet('/users/admin')
+  return data.users
+}
+
+export async function deleteAdminUser(id) {
+  return apiDelete(`/users/admin/${encodeURIComponent(id)}`)
+}
+
 export async function bookEventTickets(id, { attendees }) {
   const data = await apiPost(`/events/${encodeURIComponent(id)}/tickets`, {
     quantity: attendees.length,
     attendees,
   })
   return data
+}
+
+export async function checkInTicket(id, ticketCode) {
+  return apiPost(`/events/${encodeURIComponent(id)}/check-in`, { ticket_code: ticketCode })
 }

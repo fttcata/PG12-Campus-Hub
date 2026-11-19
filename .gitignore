@@ -12,6 +12,7 @@ server/node_modules/
 dist/
 build/
 client/dist/
+/certs/
 
 # Logs & OS metadata
 *.log

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { usePersistentState } from '../hooks/usePersistentState.js'
-import { apiGet } from '../api/client.js'
+import { apiGet, setAuthToken } from '../api/client.js'
 import { loginUser, registerUser, verifyUser } from '../api/auth.js'
 import { disconnectChatSocket } from '../realtime/chatSocket.js'
 import { validatePassword, validateStudentEmail } from '../utils/validation.js'
@@ -16,12 +16,18 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     function handleSessionExpired() {
       disconnectChatSocket()
+      setAuthToken('')
       setToken('')
       setUser(null)
     }
     window.addEventListener('campushub:session-expired', handleSessionExpired)
     return () => window.removeEventListener('campushub:session-expired', handleSessionExpired)
   }, [setToken, setUser])
+
+  // Keep the API layer's in-memory token in step with the stored one (initial load, logout).
+  useEffect(() => {
+    setAuthToken(token)
+  }, [token])
 
   useEffect(() => {
     if (!token) {
@@ -38,6 +44,7 @@ export function AuthProvider({ children }) {
       .catch((error) => {
         if (!active) return
         if (error.status === 401) {
+          setAuthToken('')
           setToken('')
           setUser(null)
         } else {
@@ -58,6 +65,7 @@ export function AuthProvider({ children }) {
     if (error) throw new Error(error)
 
     const response = await registerUser({ name: name.trim(), email: email.trim(), password })
+    setAuthToken(response.token)
     setToken(response.token)
     setUser(response.user)
     return response
@@ -68,6 +76,7 @@ export function AuthProvider({ children }) {
     if (error) throw new Error(error)
 
     const response = await loginUser({ email: email.trim(), password })
+    setAuthToken(response.token)
     setToken(response.token)
     setUser(response.user)
   }
@@ -79,6 +88,7 @@ export function AuthProvider({ children }) {
 
   function logout() {
     disconnectChatSocket()
+    setAuthToken('')
     setToken('')
     setUser(null)
   }

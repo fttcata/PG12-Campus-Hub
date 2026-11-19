@@ -12,7 +12,7 @@ export async function getChatAccess(user, eventId) {
   const event = await findEventStatus(eventId)
   if (!event) return { status: 404, error: 'Event not found' }
 
-  if (!(await isChatMember(user.id, eventId))) {
+  if (user.role !== 'admin' && !(await isChatMember(user.id, eventId))) {
     return { status: 403, error: 'Only ticket holders and donors can access the event chat' }
   }
 
