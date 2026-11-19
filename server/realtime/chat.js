@@ -22,6 +22,10 @@ export function attachChatServer(httpServer) {
 
   io.use(async (socket, next) => {
     const token = typeof socket.handshake.auth?.token === 'string' ? socket.handshake.auth.token : ''
+    if (!token) {
+      socket.data.user = null
+      return next()
+    }
     try {
       const { user, error } = await authenticateToken(token)
       if (error) return next(new Error(error))
@@ -35,6 +39,16 @@ export function attachChatServer(httpServer) {
   })
 
   io.on('connection', (socket) => {
+    socket.on('event:subscribe', (payload) => {
+      const eventId = parseEventId(payload)
+      if (eventId !== null) socket.join(roomFor(eventId))
+    })
+
+    socket.on('event:unsubscribe', (payload) => {
+      const eventId = parseEventId(payload)
+      if (eventId !== null) socket.leave(roomFor(eventId))
+    })
+
     socket.on('chat:join', async (payload, callback) => {
       const eventId = parseEventId(payload)
       if (eventId === null) {
@@ -73,4 +87,12 @@ export function attachChatServer(httpServer) {
 export function broadcastChatMessage(eventId, message) {
   if (!io) return
   io.to(roomFor(eventId)).emit('chat:message', { event_id: Number(eventId), message })
+}
+
+export function broadcastEventUpdate(eventId, event) {
+  if (!io) return
+  io.to(roomFor(eventId)).emit('event:update', {
+    event_id: Number(eventId),
+    event,
+  })
 }

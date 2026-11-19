@@ -4,8 +4,6 @@ let socket = null
 let currentToken = ''
 
 export function getChatSocket(token) {
-  if (!token) return null
-
   if (!socket) {
     socket = io({
       autoConnect: false,

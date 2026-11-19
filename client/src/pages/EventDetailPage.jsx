@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import MapEmbed from '../components/MapEmbed.jsx'
 import ProgressBar from '../components/ProgressBar.jsx'
@@ -240,6 +240,7 @@ export default function EventDetailPage() {
   const [ticketResult, setTicketResult] = useState({ ownerKey: '', eventIds: [], error: '' })
   const listedEvent = events.find((e) => e.id === id)
   const [detailResult, setDetailResult] = useState(null)
+  const [liveEvent, setLiveEvent] = useState(null)
   const currentDetailResult = detailResult?.id === id ? detailResult : null
   const requestedEvent = currentDetailResult?.event ?? null
   const detailError = currentDetailResult?.error ?? null
@@ -292,7 +293,24 @@ export default function EventDetailPage() {
     }
   }, [id, loading, listedEvent])
 
-  const event = listedEvent ?? requestedEvent
+  useEffect(() => {
+    setLiveEvent(null)
+  }, [id])
+
+  const handleEventUpdate = useCallback((updated) => {
+    setLiveEvent((current) => ({
+      ...(current ?? {}),
+      id: String(updated.id),
+      title: updated.title,
+      date: updated.date,
+      endDate: updated.end_date,
+      status: updated.status,
+      location: updated.location,
+    }))
+  }, [])
+
+  const baseEvent = listedEvent ?? requestedEvent
+  const event = baseEvent ? { ...baseEvent, ...(liveEvent?.id === String(baseEvent.id) ? liveEvent : {}) } : null
   // Demo events also have numeric ids, so where the event came from decides, not the id format.
   const isApiEvent =
     Boolean(event) && !String(event.id).startsWith('local-') && (listedEvent ? source === 'api' : Boolean(requestedEvent))
@@ -431,7 +449,7 @@ export default function EventDetailPage() {
               <p className="mt-2 font-medium">{event.location}</p>
             </div>
             <MapEmbed query={event.location} className="h-56 sm:h-72" />
-            <EventChatRoom event={event} />
+            <EventChatRoom event={event} onEventUpdate={handleEventUpdate} />
           </section>
         </section>
 

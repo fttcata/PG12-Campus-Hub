@@ -5,7 +5,14 @@ import { useEventChat } from '../hooks/useEventChat.js'
 import { useNow } from '../hooks/useNow.js'
 import { getChatStatus } from '../utils/format.js'
 
-export default function EventChatRoom({ event }) {
+function formatMessageTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString('en-HK', { hour: '2-digit', minute: '2-digit' })
+}
+
+export default function EventChatRoom({ event, onEventUpdate }) {
   const { user } = useAuth()
   const location = useLocation()
   const now = useNow()
@@ -16,6 +23,7 @@ export default function EventChatRoom({ event }) {
   const isOpen = chat.state === 'open'
   const { messages, loading, error, canChat, sending, sendMessage } = useEventChat(event.id, {
     enabled: isOpen && Boolean(user),
+    onEventUpdate,
   })
 
   async function handleSubmit(submitEvent) {
@@ -62,10 +70,27 @@ export default function EventChatRoom({ event }) {
         <>
           <div className="mt-4 space-y-2">
             {messages.length ? messages.map((message) => (
-              <p key={message.id} className="rounded-sm bg-white/60 p-3 text-sm">
-                <strong>{message.user_id === user.id ? 'You' : message.user_name || 'Student'}:</strong>{' '}
-                <span className="whitespace-pre-wrap break-words">{message.content}</span>
-              </p>
+              <div
+                key={message.id}
+                className={`flex ${String(message.user_id) === String(user.id) ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[85%] rounded-sm p-3 text-sm sm:max-w-[70%] ${
+                  String(message.user_id) === String(user.id)
+                    ? 'rounded-br-none bg-accent/35'
+                    : 'rounded-bl-none bg-white/70'
+                }`}>
+                  {String(message.user_id) !== String(user.id) && (
+                    <strong className="block text-xs text-muted">{message.user_name || 'Student'}</strong>
+                  )}
+                  <span className="whitespace-pre-wrap break-words">{message.content}</span>
+                  <time
+                    className="mt-1 block text-right font-mono text-[10px] text-muted"
+                    dateTime={message.created_at}
+                  >
+                    {formatMessageTime(message.created_at)}
+                  </time>
+                </div>
+              </div>
             )) : null}
             {!loading && messages.length === 0 && !error && (
               <p className="text-sm text-muted">No messages yet.</p>
