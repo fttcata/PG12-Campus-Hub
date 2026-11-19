@@ -27,9 +27,14 @@ const QUICK_AMOUNTS = [20, 50, 100, 200]
 function LoginPrompt({ action }) {
   const location = useLocation()
   return (
-    <Link to="/login" state={{ from: location.pathname }} className="btn btn-dark w-full">
-      Log in to {action}
-    </Link>
+    <div className="space-y-2">
+      <Link to="/login" state={{ from: location.pathname }} className="btn btn-dark w-full">
+        Log in to {action}
+      </Link>
+      <p className="text-center font-mono text-[10px] tracking-[0.08em] text-muted uppercase">
+        Verified students only
+      </p>
+    </div>
   )
 }
 
@@ -38,8 +43,8 @@ const REGISTRATION_CLOSES_BEFORE_MS = 2 * 60 * 60 * 1000
 function RegistrationWindow({ event }) {
   const registrationDeadline = new Date(new Date(event.date).getTime() - REGISTRATION_CLOSES_BEFORE_MS)
   return (
-    <p className="text-xs text-muted">
-      Event registration closes 2 hours before {formatDateTime(event.date)}.
+    <p className="font-mono text-[10px] leading-relaxed tracking-[0.06em] text-muted uppercase">
+      Registration closes 2 hours before {formatDateTime(event.date)}.
       {registrationDeadline <= new Date() ? ' The booking window has closed.' : ''}
     </p>
   )
@@ -60,25 +65,31 @@ function TicketPanel({ event }) {
   const total = event.price * quantity
 
   return (
-    <div className="panel space-y-5">
-      {hasLimit && (
-        <span className={`badge ${isFull ? 'bg-accent/10 text-accent' : 'bg-sage'}`}>
-          {Math.max(0, seatsLeft)} / {event.capacity} Tickets Remaining
-        </span>
-      )}
+    <div className="ticket space-y-5 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="eyebrow">Admission</p>
+        {hasLimit && (
+          <span className={`badge ${isFull ? 'bg-tomato text-ink' : ''}`}>
+            {Math.max(0, seatsLeft)} / {event.capacity} remaining
+          </span>
+        )}
+      </div>
       <div>
-        <p className="text-xs text-muted">Ticket price</p>
-        <p className="display text-4xl">{formatMoney(event.price)}</p>
+        <p className="mono-meta">Ticket price</p>
+        <p className="display mt-1 text-5xl">{formatMoney(event.price)}</p>
       </div>
 
       {hasLimit && (
         <div className="space-y-2">
           <ProgressBar value={event.booked} max={event.capacity} />
-          <p className="text-sm">
+          <p className="font-mono text-[10px] tracking-[0.06em] text-muted uppercase">
             {isFull ? 'Sold out' : `${Math.max(0, seatsLeft)} of ${event.capacity} seats left`}
           </p>
         </div>
       )}
+
+      <div className="perforation" aria-hidden="true" />
+
       <RegistrationWindow event={event} />
 
       {isFull || isClosed ? (
@@ -89,10 +100,13 @@ function TicketPanel({ event }) {
         <LoginPrompt action="book" />
       ) : (
         <div className="space-y-3">
-          <label className="flex items-center justify-between text-sm">
-            Tickets
-            <TicketCounter available={seatsLeft} total={event.capacity} value={quantity} onChange={setQuantity} />
-          </label>
+          <TicketCounter
+            id={`ticket-quantity-${event.id}`}
+            available={seatsLeft}
+            total={event.capacity}
+            value={quantity}
+            onChange={setQuantity}
+          />
           <button
             type="button"
             className="btn btn-dark w-full"
@@ -168,7 +182,7 @@ function PledgePanel({ event, isApiEvent }) {
   }
 
   return (
-    <form className="panel space-y-5" onSubmit={handleSubmit} noValidate>
+    <form className="ticket space-y-5 p-6" onSubmit={handleSubmit} noValidate>
       <div>
         <p className="eyebrow">Cause / pledge</p>
         <p className="mt-2 text-sm leading-relaxed text-ink/80">
@@ -176,14 +190,21 @@ function PledgePanel({ event, isApiEvent }) {
         </p>
       </div>
       <div>
-        <p className="text-xs text-muted">Raised so far</p>
-        <p className="display text-4xl">{formatMoney(event.raised)}</p>
-        <p className="mt-1 text-sm text-muted">
+        <p className="mono-meta">Raised so far</p>
+        <p className="display mt-1 text-5xl">{formatMoney(event.raised)}</p>
+        <p className="mt-1 font-mono text-[10px] tracking-[0.06em] text-muted uppercase">
           of {formatMoney(event.goal)} goal · {percent}%
         </p>
       </div>
-      <ProgressBar value={event.raised} max={event.goal} barClassName="bg-teal" />
-      {user && !isClosed && <button type="button" className="btn btn-accent w-full" onClick={() => setDonateOpen(true)}>Open donation checkout</button>}
+      <ProgressBar value={event.raised} max={event.goal} barClassName="bg-violet" />
+
+      <div className="perforation" aria-hidden="true" />
+
+      {user && !isClosed && (
+        <button type="button" className="btn btn-accent w-full" onClick={() => setDonateOpen(true)}>
+          Open donation checkout
+        </button>
+      )}
       <RegistrationWindow event={event} />
 
       {isClosed ? (
@@ -200,8 +221,11 @@ function PledgePanel({ event, isApiEvent }) {
                 key={value}
                 type="button"
                 onClick={() => setAmount(String(value))}
-                className={`rounded-sm border py-2 text-sm ${
-                  amount === String(value) ? 'border-ink bg-ink text-paper' : 'border-line hover:border-ink'
+                aria-pressed={amount === String(value)}
+                className={`rounded-[3px] border-2 border-ink py-2 font-mono text-sm transition-[transform,box-shadow,background-color,color] duration-200 ${
+                  amount === String(value)
+                    ? 'bg-ink text-cream shadow-[3px_3px_0_rgba(21,21,21,.2)]'
+                    : 'bg-card text-ink shadow-[2px_2px_0_rgba(21,21,21,.12)] hover:-translate-y-0.5'
                 }`}
               >
                 ${value}
@@ -209,7 +233,7 @@ function PledgePanel({ event, isApiEvent }) {
             ))}
           </div>
           <label className="block text-sm">
-            <span className="text-muted">Custom amount (HK$)</span>
+            <span className="mono-meta">Custom amount (HK$)</span>
             <input
               type="number"
               min="10"
@@ -219,7 +243,7 @@ function PledgePanel({ event, isApiEvent }) {
               onChange={(e) => setAmount(e.target.value)}
             />
           </label>
-          {error && <p className="text-xs text-accent">{error}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
           <button type="submit" className="btn btn-accent w-full" disabled={saving}>
             {saving ? 'Processing…' : `Pledge ${amount && Number(amount) > 0 ? formatMoney(amount) : ''}`}
           </button>
@@ -316,13 +340,13 @@ export default function EventDetailPage() {
     Boolean(event) && !String(event.id).startsWith('local-') && (listedEvent ? source === 'api' : Boolean(requestedEvent))
 
   if (loading || detailLoading) {
-    return <main className="mx-auto max-w-6xl px-4 py-16 text-muted sm:px-6">Loading event…</main>
+    return <main className="mx-auto max-w-6xl px-4 py-16 font-mono text-xs tracking-[0.08em] text-muted uppercase sm:px-6">Loading event…</main>
   }
   if (detailError && detailError.status !== 404) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-        <p role="alert" className="text-accent">Unable to load this event: {detailError.message}</p>
-        <Link to="/events" className="mt-4 inline-block text-sm text-muted hover:text-accent">← All events</Link>
+        <p role="alert" className="text-sm text-danger">Unable to load this event: {detailError.message}</p>
+        <Link to="/events" className="mt-4 inline-block font-mono text-[11px] tracking-[0.08em] text-muted uppercase hover:text-tomato-deep">← All events</Link>
       </main>
     )
   }
@@ -332,19 +356,22 @@ export default function EventDetailPage() {
     const originalUrl = getSafeExternalUrl(event.originalUrl)
 
     return (
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <Link to="/events" className="text-sm text-muted hover:text-accent">
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+        <Link
+          to="/events"
+          className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase underline decoration-ink/20 underline-offset-4 transition-colors hover:text-tomato-deep"
+        >
           ← All events
         </Link>
 
-        <section className="mt-6 max-w-3xl">
-          <span className="badge bg-ink text-paper">CEDARS</span>
-          <h1 className="display mt-5 text-4xl sm:text-6xl">{event.title}</h1>
-          <p className="mt-4 text-sm text-muted">
+        <section className="mt-8 max-w-3xl">
+          <span className="badge bg-ink text-cream">CEDARS · External listing</span>
+          <h1 className="display mt-5 text-[clamp(2.6rem,6vw,5rem)]">{event.title}</h1>
+          <p className="mt-5 font-mono text-[11px] tracking-[0.08em] text-muted uppercase">
             {formatDateTime(event.date)}
             {event.location ? ` · ${event.location}` : ''}
           </p>
-          <p className="mt-6 leading-relaxed whitespace-pre-line text-ink/80">
+          <p className="mt-7 text-[17px] leading-[1.7] whitespace-pre-line text-ink/80">
             {event.description || 'See the original listing for event details.'}
           </p>
           {originalUrl ? (
@@ -354,14 +381,14 @@ export default function EventDetailPage() {
               rel="noopener noreferrer"
               className="btn btn-dark mt-8 inline-flex"
             >
-              View details ↗
+              View details <span aria-hidden="true">↗</span>
             </a>
           ) : (
-            <p className="mt-8 text-sm text-muted">Original event link unavailable.</p>
+            <p className="mt-8 font-mono text-[11px] tracking-[0.06em] text-muted uppercase">Original event link unavailable.</p>
           )}
           {event.location && (
-            <section className="panel mt-10 space-y-4" aria-labelledby="event-location-heading">
-              <div>
+            <section className="mt-12 space-y-4" aria-labelledby="event-location-heading">
+              <div className="border-t-2 border-ink/15 pt-5">
                 <h2 id="event-location-heading" className="eyebrow">Location</h2>
                 <p className="mt-2 font-medium">{event.location}</p>
               </div>
@@ -405,62 +432,73 @@ export default function EventDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <Link to="/events" className="text-sm text-muted hover:text-accent">
+    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <Link
+        to="/events"
+        className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase underline decoration-ink/20 underline-offset-4 transition-colors hover:text-tomato-deep"
+      >
         ← All events
       </Link>
 
-      <div className="mt-6 grid gap-10 lg:grid-cols-[1fr_360px]">
+      <div className="mt-7 grid gap-12 lg:grid-cols-[1fr_380px] lg:gap-10">
         <section>
           {event.status === 'cancelled' && (
-            <p role="status" className="mb-5 rounded-sm bg-peach/50 p-3 text-sm text-accent">
+            <p
+              role="status"
+              className="mb-5 rounded-[3px] border-2 border-danger bg-[#fbeae7] p-3 text-sm font-medium text-danger"
+            >
               This event has been cancelled.
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="badge bg-ink text-paper">{KIND_LABELS[kind]}</span>
+            <span className="badge bg-ink text-cream">{KIND_LABELS[kind]}</span>
             <span className="badge">{event.category}</span>
             {event.university && <span className="badge">{event.university}</span>}
           </div>
-          <h1 className="display mt-5 text-4xl sm:text-6xl">{event.title}</h1>
+          <h1 className="display mt-5 text-[clamp(2.6rem,6vw,5.5rem)]">{event.title}</h1>
 
-          <dl className="mt-8 grid gap-4 border-y border-line py-6 sm:grid-cols-3">
+          <dl className="mt-8 grid gap-x-6 gap-y-5 border-y-2 border-ink/15 py-6 sm:grid-cols-3">
             <div>
-              <dt className="font-mono text-xs text-muted">When</dt>
-              <dd className="mt-1 text-sm font-medium">{formatDateTime(event.date)}</dd>
+              <dt className="mono-meta">When</dt>
+              <dd className="mt-1.5 text-sm font-medium">{formatDateTime(event.date)}</dd>
             </div>
             <div>
-              <dt className="font-mono text-xs text-muted">Where</dt>
-              <dd className="mt-1 text-sm font-medium">{event.location}</dd>
+              <dt className="mono-meta">Where</dt>
+              <dd className="mt-1.5 text-sm font-medium">{event.location}</dd>
             </div>
             <div>
-              <dt className="font-mono text-xs text-muted">Organiser</dt>
-              <dd className="mt-1 text-sm font-medium">{event.organizer}</dd>
+              <dt className="mono-meta">Organiser</dt>
+              <dd className="mt-1.5 text-sm font-medium">{event.organizer}</dd>
             </div>
           </dl>
 
-          <p className="mt-8 max-w-2xl leading-relaxed whitespace-pre-line text-ink/80">
+          <p className="mt-8 max-w-2xl text-[17px] leading-[1.7] whitespace-pre-line text-ink/80">
             {event.description || 'The organiser has not added a description yet.'}
           </p>
 
-          <section className="panel mt-10 space-y-4" aria-labelledby="event-location-heading">
-            <div>
-              <h2 id="event-location-heading" className="eyebrow">Location</h2>
+          <section className="mt-12 space-y-4" aria-labelledby="event-location-heading">
+            <div className="border-t-2 border-ink/15 pt-5">
+              <h2 id="event-location-heading" className="eyebrow">
+                Location
+              </h2>
               <p className="mt-2 font-medium">{event.location}</p>
             </div>
             <MapEmbed query={event.location} className="h-56 sm:h-72" />
-            <EventChatRoom event={event} onEventUpdate={handleEventUpdate} />
           </section>
+
+          <EventChatRoom event={event} />
         </section>
 
         <aside className="space-y-3 self-start lg:sticky lg:top-24">
           {currentTicketResult?.error && !hasLocalBooking && (
-            <p role="alert" className="rounded-sm bg-peach/50 p-3 text-sm text-accent">
+            <p role="alert" className="rounded-[3px] border-2 border-danger bg-[#fbeae7] p-3 text-sm text-danger">
               Unable to check your booking status: {currentTicketResult.error}
             </p>
           )}
           {event.status === 'cancelled' ? (
-            <div className="panel text-sm text-muted">Registration and pledges are closed for this event.</div>
+            <div className="panel font-mono text-[11px] tracking-[0.06em] text-muted uppercase">
+              Registration and pledges are closed for this event.
+            </div>
           ) : (
             <>
               {kind === 'fundraiser' ? <PledgePanel event={event} isApiEvent={isApiEvent} /> : <TicketPanel event={event} />}
@@ -475,7 +513,7 @@ export default function EventDetailPage() {
                 </a>
               )}
               <button type="button" className="btn btn-outline w-full" onClick={handleBookmark}>
-                {isSaved ? '★ Saved to dashboard' : '☆ Save for later'}
+                {isSaved ? '★ Pinned' : '☆ Pin this event'}
               </button>
             </>
           )}
@@ -495,14 +533,14 @@ export default function EventDetailPage() {
               {event.status !== 'cancelled' && (
                 <button
                   type="button"
-                  className="btn btn-outline w-full text-accent"
+                  className="btn btn-danger w-full"
                   disabled={canceling}
                   onClick={handleAdminCancel}
                 >
                   {canceling ? 'Cancelling…' : 'Cancel event'}
                 </button>
               )}
-              {adminError && <p role="alert" className="text-sm text-accent">{adminError}</p>}
+              {adminError && <p role="alert" className="text-sm text-danger">{adminError}</p>}
             </section>
           )}
         </aside>

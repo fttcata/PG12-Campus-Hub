@@ -134,7 +134,7 @@ export default function CameraQrScanner({ onScan, disabled = false }) {
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-sm border border-line bg-ink/90">
+      <div className="relative overflow-hidden rounded-[3px] border-2 border-ink bg-ink shadow-[4px_4px_0_rgba(21,21,21,.18)]">
         <video
           ref={videoRef}
           className={`aspect-video w-full object-cover ${scanning ? 'block' : 'hidden'}`}
@@ -158,7 +158,7 @@ export default function CameraQrScanner({ onScan, disabled = false }) {
         )}
         {scanning && (
           <div className="pointer-events-none absolute inset-0 grid place-items-center">
-            <div className="size-52 rounded-sm border-2 border-paper/90 shadow-[0_0_0_999px_rgba(32,32,32,0.35)]" />
+            <div className="size-52 rounded-[2px] border-2 border-tomato shadow-[0_0_0_999px_rgba(21,21,21,.45)]" />
           </div>
         )}
       </div>
@@ -183,7 +183,7 @@ export default function CameraQrScanner({ onScan, disabled = false }) {
         </p>
       </div>
 
-      {error && <p role="alert" className="rounded-sm bg-peach/50 p-3 text-sm text-accent">{error}</p>}
+      {error && <p role="alert" className="alert-danger">{error}</p>}
     </div>
   )
 }

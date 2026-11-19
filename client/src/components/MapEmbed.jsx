@@ -4,12 +4,14 @@ export default function MapEmbed({ query, className = 'h-56 sm:h-64' }) {
   const src = `https://maps.google.com/maps?q=${encodeURIComponent(`${query}, Hong Kong`)}&z=16&output=embed`
 
   return (
-    <div className={`relative min-w-0 overflow-hidden rounded-sm border border-line bg-sage ${className}`}>
+    <div
+      className={`relative min-w-0 overflow-hidden rounded-[2px] border-[3px] border-ink bg-card shadow-[6px_6px_0_rgba(21,21,21,.18)] ${className}`}
+    >
       <iframe
         title={`Map of ${query}`}
         src={src}
         loading="lazy"
-        className="absolute inset-0 size-full border-0 grayscale-[30%]"
+        className="absolute inset-0 size-full border-0 grayscale-[45%]"
       />
     </div>
   )

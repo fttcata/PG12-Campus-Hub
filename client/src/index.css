@@ -1,60 +1,374 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
-/* Design tokens: every `bg-paper`, `text-accent`, `font-mono`… class in the JSX comes from here. */
+/* Design tokens: every `bg-paper`, `text-accent`, `font-mono`… class in the JSX comes from here.
+   Palette and physical-print language borrowed from paulfey.me: warm canvas, ink, tomato, cream. */
 @theme {
-  --font-sans: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, monospace;
+  --font-sans: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  --color-paper: #fffaf0;
-  --color-ink: #722f37;
-  --color-muted: #806b6d;
-  --color-line: #e4d3d0;
-  --color-accent: #8db9e8;
-  --color-sage: #edf5fd;
-  --color-sage-dark: #b7d2ee;
-  --color-peach: #f4dfe2;
-  --color-mist: #dceafa;
-  --color-teal: #6f9bc9;
-  --color-leaf: #81b5a0;
+  --color-paper: #f4f2ed;
+  --color-canvas: #f4f2ed;
+  --color-card: #fffdf8;
+  --color-wall: #e6d8c0;
+  --color-cream: #fff3d6;
+  --color-ink: #151515;
+  --color-muted: #6e685e;
+  --color-line: #d9d4ca;
+  --color-accent: #c6321f;
+  --color-tomato: #ff5a45;
+  --color-tomato-deep: #c6321f;
+  --color-danger: #b3261e;
+  --color-teal: #2f6fc9;
+  --color-sky: #bfe0f5;
+  --color-violet: #6d4adf;
+  --color-leaf: #2f7d5b;
+
+  /* Legacy names kept so older surfaces inherit the new palette without a rewrite. */
+  --color-sage: #fff3d6;
+  --color-sage-dark: #e6d8c0;
+  --color-peach: #f6e4de;
+  --color-mist: #e9eff6;
+
+  --shadow-print: 10px 10px 0 3px rgb(21 21 21 / 22%);
+  --shadow-print-lift: 14px 14px 0 3px rgb(21 21 21 / 22%);
+  --shadow-sticker: 4px 4px 0 rgb(21 21 21 / 25%);
+  --shadow-ticket: 7px 7px 0 rgb(21 21 21 / 18%);
+
+  --ease-dec: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-io: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    @apply min-w-80 bg-paper font-sans text-ink antialiased;
+    @apply bg-paper font-sans text-ink antialiased;
+    min-width: 20rem;
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: var(--color-tomato);
+    color: var(--color-cream);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-tomato-deep);
+    outline-offset: 3px;
+  }
+
+  .on-ink :focus-visible {
+    outline-color: var(--color-cream);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
 /* Small set of reusable building blocks so page JSX stays readable. */
 @layer components {
   .eyebrow {
-    @apply font-mono text-xs font-medium tracking-[0.12em] text-accent uppercase;
+    @apply font-mono text-[11px] font-medium tracking-[0.14em] uppercase;
+    color: var(--color-tomato-deep);
   }
+
+  .mono-meta {
+    @apply font-mono text-[11px] tracking-[0.08em] uppercase;
+    color: var(--color-muted);
+  }
+
   .display {
-    @apply leading-[0.95] font-semibold tracking-[-0.06em];
+    font-weight: 500;
+    line-height: 0.9;
+    letter-spacing: -0.045em;
+    font-variation-settings: 'opsz' 96, 'wdth' 92;
+    text-wrap: balance;
   }
+
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-[3px] px-4 py-3 text-sm font-semibold;
+    border: 2px solid transparent;
+    transition:
+      transform 0.2s var(--ease-dec),
+      box-shadow 0.2s var(--ease-dec),
+      background-color 0.2s var(--ease-std),
+      border-color 0.2s var(--ease-std),
+      color 0.2s var(--ease-std);
   }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    transform: none;
+    box-shadow: none;
+  }
+
   .btn-dark {
-    @apply bg-ink text-paper hover:bg-ink/85;
+    @apply bg-ink text-cream;
+    border-color: var(--color-ink);
+    box-shadow: var(--shadow-sticker);
   }
+
+  .btn-dark:not(:disabled):hover {
+    background: #000;
+    transform: translate(-1px, -1px);
+    box-shadow: 6px 6px 0 rgb(21 21 21 / 25%);
+  }
+
+  .btn-dark:not(:disabled):active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 rgb(21 21 21 / 25%);
+  }
+
   .btn-accent {
-    @apply bg-accent text-ink hover:bg-accent/85;
+    @apply bg-tomato text-ink;
+    border-color: var(--color-ink);
+    box-shadow: var(--shadow-sticker);
   }
+
+  .btn-accent:not(:disabled):hover {
+    background: #ff705c;
+    transform: translate(-1px, -1px);
+    box-shadow: 6px 6px 0 rgb(21 21 21 / 25%);
+  }
+
+  .btn-accent:not(:disabled):active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 rgb(21 21 21 / 25%);
+  }
+
   .btn-outline {
-    @apply border border-ink/20 hover:border-ink;
+    @apply border-ink bg-transparent text-ink;
+    box-shadow: 3px 3px 0 rgb(21 21 21 / 15%);
   }
+
+  .btn-outline:not(:disabled):hover {
+    @apply bg-ink text-cream;
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 rgb(21 21 21 / 25%);
+  }
+
+  .btn-outline:not(:disabled):active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 rgb(21 21 21 / 25%);
+  }
+
+  .btn-danger {
+    @apply border-danger bg-transparent text-danger;
+    box-shadow: 3px 3px 0 rgb(179 38 30 / 18%);
+  }
+
+  .btn-danger:not(:disabled):hover {
+    background: var(--color-danger);
+    color: var(--color-cream);
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 rgb(21 21 21 / 22%);
+  }
+
+  .btn-danger:not(:disabled):active {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 rgb(21 21 21 / 22%);
+  }
+
   .input {
-    @apply w-full rounded-sm border border-line bg-white/70 px-3 py-2.5 text-sm outline-none placeholder:text-muted/70 focus:border-ink focus:ring-2 focus:ring-accent/20;
+    @apply w-full rounded-[3px] px-3 py-2.5 text-sm outline-none;
+    border: 2px solid var(--color-line);
+    background: var(--color-card);
+    color: var(--color-ink);
+    transition:
+      border-color 0.2s var(--ease-std),
+      box-shadow 0.2s var(--ease-std);
   }
+
+  .input::placeholder {
+    color: color-mix(in srgb, var(--color-muted) 70%, transparent);
+  }
+
+  .input:focus {
+    border-color: var(--color-ink);
+    box-shadow: 3px 3px 0 rgb(255 90 69 / 30%);
+  }
+
   .input-error {
-    @apply border-accent;
+    border-color: var(--color-danger);
   }
+
   .badge {
-    @apply inline-flex items-center rounded-full bg-white/60 px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink uppercase;
+    @apply inline-flex items-center rounded-[2px] px-2.5 py-1 font-mono text-[10px] tracking-[0.08em] uppercase;
+    border: 1.5px solid var(--color-ink);
+    background: var(--color-cream);
+    color: var(--color-ink);
+    box-shadow: 2px 2px 0 rgb(21 21 21 / 18%);
   }
+
   .panel {
-    @apply rounded-sm border border-line bg-white/50 p-6;
+    @apply rounded-[3px] p-6;
+    border: 1.5px solid rgb(21 21 21 / 16%);
+    background: var(--color-card);
+  }
+
+  /* Functional paper card: square, inked and offset like a pinned sheet, without the print tilt. */
+  .paper {
+    border: 2px solid var(--color-ink);
+    border-radius: 3px;
+    background: var(--color-card);
+    box-shadow: 5px 5px 0 rgb(21 21 21 / 14%);
+  }
+
+  .alert-danger {
+    @apply rounded-[3px] p-3 text-sm;
+    border: 2px solid var(--color-danger);
+    background: #fbeae7;
+    color: var(--color-danger);
+  }
+
+  /* An event card as a physical print: white mat, ink outline, hard offset shadow, slight tilt. */
+  .print {
+    position: relative;
+    border: 3px solid var(--color-ink);
+    border-radius: 2px;
+    background: var(--color-card);
+    box-shadow: var(--shadow-print);
+    transform: rotate(var(--tilt, 0deg));
+    transition:
+      transform 0.5s var(--ease-spring),
+      box-shadow 0.5s var(--ease-dec);
+  }
+
+  .print:focus-within,
+  .print:hover {
+    transform: rotate(0deg) translateY(-5px);
+    box-shadow: var(--shadow-print-lift);
+  }
+
+  .print-flat {
+    transform: none;
+    box-shadow: var(--shadow-print);
+  }
+
+  .print-flat:focus-within,
+  .print-flat:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-print-lift);
+  }
+
+  .tape::before {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    top: -13px;
+    left: 50%;
+    width: 74px;
+    height: 24px;
+    translate: -50% 0;
+    rotate: -3deg;
+    background: rgb(230 216 192 / 82%);
+    border: 1px solid rgb(21 21 21 / 14%);
+  }
+
+  .grid-paper {
+    background-image:
+      linear-gradient(to right, rgb(21 21 21 / 5%) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(21 21 21 / 5%) 1px, transparent 1px);
+    background-size: 25vw 25vw;
+    background-position: calc(50% + 0.5px) 0;
+  }
+
+  /* Ticket stub used by the booking and pledge panels. */
+  .ticket {
+    border: 2px solid var(--color-ink);
+    border-radius: 3px;
+    background: var(--color-cream);
+    box-shadow: var(--shadow-ticket);
+  }
+
+  .perforation {
+    position: relative;
+    margin: 1.25rem -1.5rem;
+    border-top: 2px dashed rgb(21 21 21 / 30%);
+  }
+
+  .perforation::before,
+  .perforation::after {
+    content: '';
+    position: absolute;
+    top: -10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--color-paper);
+  }
+
+  .perforation::before {
+    left: -11px;
+  }
+
+  .perforation::after {
+    right: -11px;
+  }
+
+  .rise {
+    animation: rise-in 0.7s var(--ease-dec) both;
+    animation-delay: var(--delay, 0ms);
+  }
+
+  .drop {
+    animation: drop-in 0.8s var(--ease-spring) both;
+    animation-delay: var(--delay, 0ms);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 24px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    translate: 0 -32px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .print,
+  .print-flat {
+    transition: none;
+  }
+
+  .print:hover,
+  .print:focus-within,
+  .print-flat:hover,
+  .print-flat:focus-within {
+    transform: rotate(var(--tilt, 0deg));
+    box-shadow: var(--shadow-print);
   }
 }

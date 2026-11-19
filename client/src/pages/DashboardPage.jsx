@@ -18,7 +18,7 @@ const TABS = [
 
 const CHAT_STYLES = {
   locked: 'bg-ink/5 text-muted',
-  open: 'bg-leaf/20 text-teal',
+  open: 'bg-leaf text-cream',
   closed: 'bg-ink/5 text-muted line-through',
 }
 
@@ -88,9 +88,10 @@ function useAccountActivity(token, enabled) {
 
 function EmptyState({ text, to, action }) {
   return (
-    <div className="panel text-center">
-      <p className="text-muted">{text}</p>
-      <Link to={to} className="btn btn-dark mt-4">
+    <div className="paper flex flex-col items-center px-6 py-12 text-center">
+      <span aria-hidden="true" className="font-mono text-2xl leading-none text-tomato">✳</span>
+      <p className="mt-4 max-w-sm text-muted">{text}</p>
+      <Link to={to} className="btn btn-dark mt-5">
         {action}
       </Link>
     </div>
@@ -102,27 +103,34 @@ function TicketsTab({ bookings }) {
   if (bookings.length === 0) return <EmptyState text="You haven't booked anything yet." to="/events" action="Find an event" />
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-5">
       {bookings.map((booking) => {
         const chat = getChatStatus(booking.date, now)
         return (
-          <li key={booking.reference} className="panel flex flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="w-20 shrink-0 font-mono text-xs text-muted">{formatDate(booking.date)}</div>
+          <li key={booking.reference} className="paper flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-5">
+            <div className="w-24 shrink-0 border-b border-dashed border-ink/20 pb-3 font-mono text-[11px] leading-relaxed tracking-[0.06em] text-muted uppercase sm:border-r sm:border-b-0 sm:pb-0">
+              {formatDate(booking.date)}
+            </div>
             <div className="flex-1">
-              <Link to={`/events/${booking.eventId}`} className="font-semibold hover:text-accent">
+              <Link
+                to={`/events/${booking.eventId}`}
+                className="font-semibold underline decoration-ink/20 underline-offset-4 transition-colors hover:text-tomato-deep hover:decoration-tomato-deep"
+              >
                 {booking.title}
               </Link>
-              <p className="text-sm text-muted">
+              <p className="mt-1 text-sm text-muted">
                 {booking.location} · {booking.quantity} ticket{booking.quantity > 1 && 's'} ·{' '}
                 {booking.total > 0 ? formatMoney(booking.total) : 'Free'}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3 sm:flex-col sm:items-end">
-              <span className="font-mono text-sm tracking-wider">{booking.reference}</span>
+            <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+              <span className="border border-ink/20 bg-cream px-2 py-1 font-mono text-[10px] tracking-[0.04em]">
+                {booking.reference}
+              </span>
               {booking.cancelled ? (
-                <span className="rounded-full bg-ink/5 px-2.5 py-1 text-xs text-muted">Cancelled</span>
+                <span className="badge bg-tomato text-ink">Cancelled</span>
               ) : (
-                <span className={`rounded-full px-2.5 py-1 text-xs ${CHAT_STYLES[chat.state]}`}>{chat.label}</span>
+                <span className={`badge ${CHAT_STYLES[chat.state]}`}>{chat.label}</span>
               )}
             </div>
           </li>
@@ -137,18 +145,21 @@ function PledgesTab({ pledges }) {
     return <EmptyState text="No pledges yet." to="/events?type=fundraiser" action="Browse fundraisers" />
   }
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-5">
       {pledges.map((pledge) => (
-        <li key={pledge.reference} className="panel flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <li key={pledge.reference} className="ticket flex flex-col justify-between gap-3 p-5 sm:flex-row sm:items-center">
           <div>
-            <Link to={`/events/${pledge.eventId}`} className="font-semibold hover:text-accent">
+            <Link
+              to={`/events/${pledge.eventId}`}
+              className="font-semibold underline decoration-ink/20 underline-offset-4 transition-colors hover:text-tomato-deep hover:decoration-tomato-deep"
+            >
               {pledge.title}
             </Link>
-            <p className="text-sm text-muted">Pledged {formatDateTime(pledge.createdAt)}</p>
+            <p className="mt-1 text-sm text-muted">Pledged {formatDateTime(pledge.createdAt)}</p>
           </div>
           <div className="text-left sm:text-right">
-            <p className="display text-2xl">{formatMoney(pledge.amount)}</p>
-            <p className="font-mono text-xs text-muted">{pledge.reference}</p>
+            <p className="display text-3xl">{formatMoney(pledge.amount)}</p>
+            <p className="mt-1 font-mono text-[10px] tracking-[0.06em] text-muted">{pledge.reference}</p>
           </div>
         </li>
       ))}
@@ -161,25 +172,28 @@ function MyEventsTab({ events, onDelete }) {
   if (events.length === 0) return <EmptyState text="You aren't organising anything yet." to="/events/new" action="Create an event" />
 
   return (
-    <ul className="grid gap-4 md:grid-cols-2">
+    <ul className="grid gap-6 md:grid-cols-2">
       {events.map((event) => {
         const kind = getEventKind(event)
         const isFundraiser = kind === 'fundraiser'
         return (
-          <li key={event.id} className="panel flex flex-col gap-4">
+          <li key={event.id} className="paper flex flex-col gap-4 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="font-mono text-xs text-muted">{formatDateTime(event.date)}</p>
-                <h3 className="display mt-1 text-2xl">{event.title}</h3>
+                <p className="font-mono text-[11px] tracking-[0.06em] text-muted uppercase">{formatDateTime(event.date)}</p>
+                <h3 className="display mt-2 text-2xl">{event.title}</h3>
               </div>
-              <span className="badge">{KIND_LABELS[kind]}</span>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <span className="badge">{KIND_LABELS[kind]}</span>
+                {event.status === 'cancelled' && <span className="badge bg-tomato text-ink">Cancelled</span>}
+              </div>
             </div>
 
             <div className="space-y-2 text-sm">
               <ProgressBar
                 value={isFundraiser ? event.raised : event.booked}
                 max={isFundraiser ? event.goal : event.capacity}
-                barClassName={isFundraiser ? 'bg-teal' : 'bg-accent'}
+                barClassName={isFundraiser ? 'bg-violet' : 'bg-tomato'}
               />
               <p className="text-muted">
                 {isFundraiser
@@ -188,7 +202,7 @@ function MyEventsTab({ events, onDelete }) {
               </p>
             </div>
 
-            <div className="mt-auto flex flex-wrap gap-2">
+            <div className="mt-auto flex flex-wrap gap-2 border-t border-dashed border-ink/15 pt-4">
               <Link to={`/events/${event.id}`} className="btn btn-outline flex-1 py-2">
                 View
               </Link>
@@ -202,7 +216,7 @@ function MyEventsTab({ events, onDelete }) {
               </Link>
               <button
                 type="button"
-                className="btn btn-outline py-2 text-accent"
+                className="btn btn-danger py-2"
                 onClick={() => onDelete(event)}
               >
                 Delete
@@ -278,24 +292,33 @@ export default function DashboardPage() {
       <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div>
           <p className="eyebrow">Dashboard · {user.university}</p>
-          <h1 className="display mt-4 text-5xl md:text-6xl">Hi, {user.name.split(' ')[0]}.</h1>
-          <p className="mt-3 font-mono text-xs text-muted">{user.email}</p>
+          <h1 className="display mt-4 text-5xl md:text-6xl">
+            Hi, {user.name.split(' ')[0]}
+            <span className="text-tomato">.</span>
+          </h1>
+          <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px] tracking-[0.06em] text-muted uppercase">
+            <span>{user.email}</span>
+            <span aria-hidden="true" className="text-tomato">✳</span>
+            <span>{user.role === 'admin' ? 'Admin' : 'Student'}</span>
+          </div>
         </div>
         <Link to="/events/new" className="btn btn-dark self-start md:self-auto">
           + Create event
         </Link>
       </div>
 
-      <div className="mt-10 grid grid-cols-2 gap-3 md:grid-cols-4">
-        {stats.map(([label, value]) => (
-          <div key={label} className="panel p-5">
-            <p className="text-xs text-muted">{label}</p>
-            <p className="display mt-2 text-3xl">{value}</p>
+      <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {stats.map(([label, value], index) => (
+          <div key={label} className="paper p-5">
+            <p className="font-mono text-[10px] tracking-[0.1em] text-muted uppercase">
+              <span className="text-tomato">{String(index + 1).padStart(2, '0')}</span> / {label}
+            </p>
+            <p className="display mt-3 text-3xl sm:text-4xl">{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-10 flex gap-6 overflow-x-auto border-b border-line" role="tablist">
+      <div className="mt-10 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Dashboard sections">
         {TABS.map(([key, label]) => (
           <button
             key={key}
@@ -303,8 +326,10 @@ export default function DashboardPage() {
             role="tab"
             aria-selected={tab === key}
             onClick={() => setSearchParams({ tab: key })}
-            className={`-mb-px shrink-0 border-b-2 pb-3 text-sm transition-colors ${
-              tab === key ? 'border-accent font-semibold' : 'border-transparent text-muted hover:text-ink'
+            className={`justify-center rounded-[2px] border-2 border-ink px-3.5 py-2 font-mono text-[11px] tracking-[0.06em] whitespace-nowrap uppercase transition-[transform,box-shadow,background-color,color] duration-200 sm:shrink-0 ${
+              tab === key
+                ? 'bg-ink text-cream shadow-[4px_4px_0_rgba(21,21,21,.18)]'
+                : 'bg-card text-ink shadow-[2px_2px_0_rgba(21,21,21,.1)] hover:-translate-y-0.5 hover:bg-cream'
             }`}
           >
             {label}
@@ -314,17 +339,17 @@ export default function DashboardPage() {
 
       <div className="mt-6">
         {remoteError && (
-          <p role="alert" className="panel mb-4 text-sm text-accent">
+          <p role="alert" className="alert-danger mb-4">
             Unable to load your account activity: {remoteError}
           </p>
         )}
         {deleteError && (
-          <p role="alert" className="panel mb-4 text-sm text-accent">
+          <p role="alert" className="alert-danger mb-4">
             {deleteError}
           </p>
         )}
         {remoteLoading && tab !== 'saved' ? (
-          <p className="text-muted">Loading…</p>
+          <p className="font-mono text-[11px] tracking-[0.08em] text-muted uppercase">Loading activity…</p>
         ) : (
           <>
             {tab === 'tickets' && <TicketsTab bookings={bookings} />}
@@ -336,7 +361,7 @@ export default function DashboardPage() {
           (savedEvents.length === 0 ? (
             <EmptyState text="Tap “Save for later” on any event to keep it here." to="/events" action="Browse events" />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
               {savedEvents.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}

@@ -132,9 +132,9 @@ export default function FloatingEventChat() {
       {isOpen && (
         <section
           aria-label="Event chat"
-          className="absolute bottom-16 right-0 flex h-[min(34rem,calc(100dvh-6rem))] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-lg border border-line bg-paper shadow-2xl"
+          className="absolute bottom-16 right-0 flex h-[min(34rem,calc(100dvh-6rem))] w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[3px] border-2 border-ink bg-paper shadow-[8px_8px_0_rgba(21,21,21,.22)]"
         >
-          <header className="flex items-center gap-3 border-b border-line bg-white/80 px-4 py-3">
+          <header className="flex items-center gap-3 border-b-2 border-ink/15 bg-cream/60 px-4 py-3">
             {selectedRoom ? (
               <button
                 type="button"
@@ -145,7 +145,7 @@ export default function FloatingEventChat() {
                 <span aria-hidden="true">←</span>
               </button>
             ) : (
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sage text-teal">
+              <span className="grid size-9 shrink-0 place-items-center rounded-[2px] border-2 border-ink bg-tomato text-ink">
                 <ChatIcon />
               </span>
             )}
@@ -171,11 +171,15 @@ export default function FloatingEventChat() {
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
               <p className="px-2 pb-3 pt-1 text-xs text-muted">Chats for events you’ve joined</p>
               {loadingRooms && <ChatListSkeleton />}
-              {roomError && <p role="alert" className="px-2 py-3 text-sm text-accent">{roomError}</p>}
+              {roomError && <p role="alert" className="px-2 py-3 text-sm text-danger">{roomError}</p>}
               {!loadingRooms && rooms.length === 0 && !roomError && (
                 <div className="rounded-sm border border-dashed border-line p-5 text-center">
                   <p className="text-sm text-muted">You don’t have any event chats yet.</p>
-                  <Link to="/events" onClick={() => setIsOpen(false)} className="mt-3 inline-block text-sm font-semibold text-accent">
+                  <Link
+                    to="/events"
+                    onClick={() => setIsOpen(false)}
+                    className="mt-3 inline-block text-sm font-semibold text-tomato-deep underline-offset-4 hover:underline"
+                  >
                     Find an event
                   </Link>
                 </div>
@@ -185,10 +189,10 @@ export default function FloatingEventChat() {
                   <li key={room.id}>
                     <button
                       type="button"
-                      className="flex w-full items-center gap-3 rounded-sm p-3 text-left transition-colors hover:bg-white/80"
+                      className="flex w-full items-center gap-3 rounded-[2px] border border-transparent p-3 text-left transition-colors hover:border-ink/15 hover:bg-cream/60"
                       onClick={() => setSelectedRoomId(room.id)}
                     >
-                      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-mist font-semibold text-ink">
+                      <span className="grid size-11 shrink-0 place-items-center rounded-full border-2 border-ink bg-cream font-mono font-semibold text-ink">
                         {room.title.charAt(0).toUpperCase()}
                       </span>
                       <span className="min-w-0 flex-1">
@@ -213,7 +217,7 @@ export default function FloatingEventChat() {
                   <Link
                     to={`/events/${selectedRoom.id}`}
                     onClick={() => setIsOpen(false)}
-                    className="text-xs font-semibold text-accent hover:underline"
+                    className="font-mono text-[10px] font-semibold tracking-[0.08em] text-tomato-deep uppercase hover:underline"
                   >
                     View event
                   </Link>
@@ -231,16 +235,18 @@ export default function FloatingEventChat() {
                 {loadingMessages && messages.length === 0 && (
                   <p className="text-center text-xs text-muted">Loading messages…</p>
                 )}
-                {conversationError && <p role="alert" className="rounded-sm bg-accent/10 p-2 text-xs text-accent">{conversationError}</p>}
+                {conversationError && <p role="alert" className="alert-danger p-2 text-xs">{conversationError}</p>}
                 {!loadingMessages && messages.length === 0 && selectedRoom.chat.state === 'open' && !conversationError && (
                   <p className="pt-8 text-center text-sm text-muted">No messages yet. Say hello to the group.</p>
                 )}
                 {messages.map((message) => (
                   <div
                     key={message.id}
-                    className="max-w-[88%] rounded-lg bg-white px-3 py-2 text-sm"
+                    className="max-w-[88%] rounded-[2px] border border-ink/15 bg-card px-3 py-2 text-sm"
                   >
-                    <p className="mb-1 text-xs font-semibold text-teal">{message.user_name || 'Student'}</p>
+                    <p className="mb-1 font-mono text-[10px] tracking-[0.08em] text-tomato-deep uppercase">
+                      {message.user_name || 'Student'}
+                    </p>
                     <p className="whitespace-pre-wrap break-words">{message.content}</p>
                   </div>
                 ))}
@@ -248,7 +254,7 @@ export default function FloatingEventChat() {
 
               {selectedRoom.chat.state === 'open' ? (
                 canChat ? (
-                  <form onSubmit={sendMessage} className="border-t border-line bg-white/80 p-3">
+                  <form onSubmit={sendMessage} className="border-t-2 border-ink/15 bg-card p-3">
                     <label className="sr-only" htmlFor="event-chat-message">Write a message</label>
                     <div className="flex items-end gap-2">
                       <textarea
@@ -274,12 +280,12 @@ export default function FloatingEventChat() {
                     </p>
                   </form>
                 ) : (
-                  <div className="border-t border-line bg-white/80 p-4 text-center text-xs text-muted">
+                  <div className="border-t-2 border-ink/15 bg-card p-4 text-center text-xs text-muted">
                     {loadingMessages || !conversationError ? 'Connecting to chat…' : 'Messaging is unavailable.'}
                   </div>
                 )
               ) : (
-                <div className="border-t border-line bg-white/80 p-4 text-center text-xs text-muted">
+                <div className="border-t-2 border-ink/15 bg-card p-4 text-center text-xs text-muted">
                   Messaging is unavailable while this room is {selectedRoom.chat.state}.
                 </div>
               )}
@@ -292,7 +298,7 @@ export default function FloatingEventChat() {
         type="button"
         aria-label={isOpen ? 'Close event chats' : 'Open event chats'}
         aria-expanded={isOpen}
-        className="grid size-14 place-items-center rounded-full bg-ink text-paper shadow-lg transition-transform hover:scale-105 hover:bg-teal focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="grid size-14 place-items-center rounded-[3px] border-2 border-ink bg-ink text-cream shadow-[4px_4px_0_rgba(21,21,21,.25)] transition-[transform,box-shadow,background-color,color] duration-200 hover:-translate-y-0.5 hover:bg-tomato hover:text-ink hover:shadow-[6px_6px_0_rgba(21,21,21,.25)]"
         onClick={() => setIsOpen((open) => !open)}
       >
         {isOpen ? <span aria-hidden="true" className="text-2xl leading-none">×</span> : <ChatIcon />}
